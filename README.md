@@ -1,17 +1,24 @@
-This is work in progress. current state:
-parser: maybe 80%
-parsed tree: nothing
-test cases: none are pased yet
+Status:
+=======
 
-Anyway me adding a real test suite and running it (even extending it)
-should give you some confidence that this attemp is taken seriously.
-The result will be HAML compliant libarary
-(at least HTML and attributes should be rendered correctly)
+  This is work in progress. current state:
+  parser: maybe 80%
+  parsed tree: nothing
+  test cases: none are pased yet
 
-If you find bugs use the gituhub's bugs create a test case and send a patch, please.
+  Anyway me adding a real test suite and running it (even extending it)
+  should give you some confidence that this attemp is taken seriously.
+  The result will be HAML compliant libarary
+  (at least HTML and attributes should be rendered correctly)
+
+BUGS:
+=====
+
+  If you find bugs use the gituhub's bugs create a test case and send a patch,
+  please.
 
 Usage:
-=====
+======
   $haml = "%div = $key"
   eval(Haml::treeToPHP($haml, "func_name"));
   echo func_name(array('key'=> "value"));
@@ -27,18 +34,24 @@ Note:
   This library of course is limited by PHP. The language still sucks.
   I still tried getting the best out of it.
 
-TODO: test quoting in all cases:
+TODO test quoting in all cases:
+===============================
   %div = 
   %div != 
   %div &= 
   with both options escape_html
   reformat this
 
-Why did I write it?:
+  Add this library to the list of PHP implementations on Wikipedia
+
+Why did I write it:
+===================
 
   - Cause I want to improve the world - tell people that they should learn from
     other communities and other languages - because PHP is too limiting in
     various cases.
+    Three PHP devs tried writing this library. None worked. Worse: None had a
+    test suite!
 
   - I need a working implementation I can maintain.
 
@@ -47,10 +60,34 @@ Why did I write it?:
 
 related work:
 =============
+Most of the related work has been found using wikipedias haml page
+
+  phphaml:
+  ========
+    http://phphaml.sourceforge.net/
+    (flaws rev 90):
+    - Code does not pay attention to != vs &= vs =
+    - Code dose contain only one htmlentities which is used for quoting attribute
+     values. So for HTML content no quoting is done at all!  So no quoting is
+     done at all !
+
+    Is the author using filters or such?
+
+    - This does not work:
+      %div{ :foo => substr("abc",1,2) }
+      at least this works here:
+      %div{ :foo => 2 }
+
+    That the author does not pay attention to HTML quoting enough makes me stop
+    thinking about using it.
 
   phamlp:
   =======
-    See my statement. The parser will never be compliant without a rewrite
+    http://code.google.com/p/phamlp/
+    https://github.com/MarcWeber/phamlp
+    
+    See my statement in the README.
+    The parser will never be compliant without a rewrite
     The author seems to be gone away ? No replies or updates for a long time.
 
   Fammel: https://github.com/dxw/Fammel
@@ -82,6 +119,22 @@ related work:
         (Mabye someone proofs me wrong
 
     Haml's testcases run on Fammel (ignoring spaces etc.)
+    (based on git rev 89f10893)
     http://mawercer.de/~marc/results.txt
+
+    Examples of cases which fail:
+
+        Boolean attributes
+        81:
+          boolean attribute with XHTML
+        haml: %input(checked=true)
+        expected: : <input checked='checked' />
+             got: : <input>  (checked=true)</input>
+
+        82:
+          boolean attribute with HTML
+        haml: %input(checked=true)
+        expected: : <input checked>
+             got: : <input>  (checked=true)</input>
 
   This is a rewrite.
