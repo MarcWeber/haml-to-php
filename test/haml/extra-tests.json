@@ -1,0 +1,65 @@
+{
+  'no subtags allowed' : {
+    "nested text after =": {
+      "haml" : "%div=""\n  TEXT",
+      "html" : "<input checked>",
+      "expect_parse_failure": true
+    },
+    "nested tag after =": {
+      "haml" : "%div=""\n  %div",
+      "html" : "<input checked>",
+      "expect_parse_failure": true
+    },
+    "nested text after !=": {
+      "haml" : "%div!=""\n  TEXT",
+      "html" : null,
+      "expect_parse_failure": true
+    },
+    "nested tag after !=": {
+      "haml" : "%div!=""\n  %div",
+      "html" : null,
+      "expect_parse_failure": true
+    },
+    "nested text after &=": {
+      "haml" : "%div&=""\n  TEXT",
+      "html" : null,
+      "expect_parse_failure": true
+    },
+    "nested tag after &=": {
+      "haml" : "%div&=""\n  %div",
+      "html" : null,
+      "expect_parse_failure": true
+    }
+  },
+  'code may not have multiple lines for what reason whatsoever?' : {
+    "ruby style attrs": {
+      "haml" : "%div{href=3+\n4}",
+      "html" : null,
+      "expect_parse_failure": true
+    },
+    "html style attrs": {
+      "haml" : "%div(href=\"#{3+\n4}\")",
+      "html" : null,
+      "expect_parse_failure": true
+    }
+  },
+  'bad nesting should fail' : {
+    "too deep text": {
+      "haml" : "%div\n  %div\n      TEXT",
+      "html" : null,
+      "expect_parse_failure": true
+    },
+    "too deep tag": {
+      "haml" : "%div\n  %div\n      %div",
+      "html" : null,
+      "expect_parse_failure": true
+    }
+  }
+
+  'php blocks' : {
+    "too deep text": {
+      "haml" : "- foreach(array(1,2,3) as $nr)\n  %p= $nr",
+      "html" : "<p>1</p><p>2</p><p>3</p>",
+    },
+  }
+}
