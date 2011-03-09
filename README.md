@@ -1,3 +1,7 @@
+What is this?:
+=============
+See www.haml-lang.com
+
 Status:
 =======
 
@@ -5,6 +9,8 @@ Status:
   parser: maybe 80%
   parsed tree: nothing
   test cases: none are pased yet
+
+  skipping doctype tests (TODO: implement this)
 
   Anyway me adding a real test suite and running it (even extending it)
   should give you some confidence that this attemp is taken seriously.
@@ -17,10 +23,33 @@ BUGS:
   If you find bugs use the gituhub's bugs create a test case and send a patch,
   please.
 
+  #{} is not honored in text blocks (See TODO)
+
+  #id()() and #id{}{} is allowed (won't fix)
+
+  #A{:id => "B"}(id="C") yields <div id="A_B_C"> instead of <div id="A_C_B"> (fix only if some is hurt by it)
+
+  There are some complicated cases such as using both () and {} and lists of id
+  and class items. In some cases the result differs from Ruby HAML.
+
+  complicated cases like this.. What should be the result?
+  #A{:id => "B", :class => "in#{2}ner2"}(id="C" class="inner1" class="iN#{3+1}ner2")
+  ruby haml: <div class='in2ner2' id='A_C_B'></div>
+  So the second class is dropped?
+
+  filters are still missing
+
+  If Ruby native arrays are support this library should support php native
+  arrays. Maybe you're right. Parsing is more complicated then. This is no
+  priority for me.
+
+  no caching provided yet. a simple file caching (using locking) should be
+  implemented
+
 Usage:
 ======
   $haml = "%div = $key"
-  eval(Haml::treeToPHP($haml, "func_name"));
+  eval(Haml::hamlToPHPStr($haml, "func_name"));
   echo func_name(array('key'=> "value"));
 
   The func runs extract on each passed argument to put vars in scope
@@ -44,22 +73,35 @@ TODO test quoting in all cases:
 
   Add this library to the list of PHP implementations on Wikipedia
 
-Why did I write it:
-===================
+  implement doctypes
+  #{} in text blocks
+
+  use namespace!
+
+Why do I use HAML:
+==================
+  Tags are always closed. Its faster to write and read.
+  Why use Zen Coding if you can use HAML?
+
+
+Why I wrote it:
+===============
 
   - Cause I want to improve the world - tell people that they should learn from
     other communities and other languages - because PHP is too limiting in
-    various cases.
-    Three PHP devs tried writing this library. None worked. Worse: None had a
-    test suite!
+    various cases. Important tools like QuickCheck do not exist in PHP.
+    This often results in bad code which means:
+    * missing test suites
+    * you have to find out what works and what doesn't
 
   - I need a working implementation I can maintain.
 
   - I want to translate this code into HaXe later in which case I only
-    have to rewrite the recursive regex by some additional code.
+    have to rewrite the recursive regex by some additional code and replace
+    arrays by lists or such..
 
-related work:
-=============
+related (php) work:
+===================
 Most of the related work has been found using wikipedias haml page
 
   phphaml:

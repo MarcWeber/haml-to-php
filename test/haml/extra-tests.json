@@ -43,6 +43,7 @@
       "expect_parse_failure": true
     }
   },
+
   'bad nesting should fail' : {
     "too deep text": {
       "haml" : "%div\n  %div\n      TEXT",
@@ -54,12 +55,33 @@
       "html" : null,
       "expect_parse_failure": true
     }
-  }
+  },
 
   'php blocks' : {
     "too deep text": {
       "haml" : "- foreach(array(1,2,3) as $nr)\n  %p= $nr",
       "html" : "<p>1</p><p>2</p><p>3</p>",
     },
+
+    "if .. else true ": {
+      "haml" : "- if ($value)\n  %p='true'\n- else\n  %p='false'",
+      "html" : "<p>true</p>",
+      "locals" : {
+        "value": true
+      }
+    },
+    "if .. else false ": {
+      "haml" : "- if ($value)\n  %p='true'\n- else\n  %p='false'",
+      "html" : "<p>false</p>",
+      "locals" : {
+        "value": false
+      }
+    }
+  }
+
+  'id and class special cases' : {
+    "id list" : {
+      "haml" : "#A{:id => ",
+    }
   }
 }

@@ -3,7 +3,7 @@
 /* run tests in test/haml/ruby-haml-3.0.24-tests.json
  */
 
-require_once('../../Haml.php');
+require_once(dirname(__FILE__).'/../../haml/Haml.php');
 
 
 $nr = 0;
@@ -21,6 +21,9 @@ function strip($s)
 }
 
 $ok = 0;
+$max_failures = 1;
+
+Haml::hamlInternalTest();
 
 foreach (array(
       dirname(__FILE__).'/ruby-haml-3.0.24-tests.json',
@@ -30,28 +33,34 @@ foreach (array(
   $tests = json_decode(file_get_contents($file), true);
 
   foreach ($tests as $groupheader => $group) {
+    if (in_array($groupheader,array('headers'))){
+      // TODO
+      echo "skipping $groupheader\n";
+      continue;
+    }
+
     echo "===> $groupheader\n";
     foreach ($group as $name => $test) {
       $nr ++;
-      if (in_array($nr, $skip_parse_error))
-        continue;
       
       $haml = $test['haml'];
       $expected = $test['html'];
 
       echo "$nr: $name\n";
-      try {
+      // try {
 
         $f = "test$nr";
-        eval(Haml::treeToPHP($haml, $f));
+        eval(Haml::hamlToPHPStr($haml, $f));
         $rendered = $f(d($test,'locals',array()));
 
+        /*
       } catch (Exception $e){
         $rendered =
           (d($test,'expect_parse_failure', false))
           ? null
           : "Exception: ".$e->getMessage();
       }
+         */
 
       list($e_s, $got_s) = array_map('strip', array($expected, $rendered));
 
@@ -63,6 +72,9 @@ foreach (array(
         echo "failed:\n";
         echo "expected: $e_s\n";
         echo "got: $got_s\n";
+        $max_failures --;
+        if ($max_failures == 0)
+          exit(0);
       }
       echo "\n";
     }
