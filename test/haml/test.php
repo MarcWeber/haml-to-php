@@ -16,18 +16,21 @@ function strip($s)
     return $s;
   // dropping / to ignore HTML vs XHTML
   // haml is quoting attrs by, phamlp by " ?
-  // return str_replace("\"","'", preg_replace('/[ \t\n\/]*/',"",$s) );
+  return str_replace("\n","",preg_replace('/[ \t]*/','',$s));
   return $s;
 }
 
 $ok = 0;
-$max_failures = 1;
+$max_failures = 3;
 
 Haml::hamlInternalTest();
 
+# $only = 65;
+$skip = array(58 );
+
 foreach (array(
       dirname(__FILE__).'/ruby-haml-3.0.24-tests.json',
-      dirname(__FILE__).'/extra-tests.json',
+      // dirname(__FILE__).'/extra-tests.json',
   ) as $file) {
 
   $tests = json_decode(file_get_contents($file), true);
@@ -42,6 +45,10 @@ foreach (array(
     echo "===> $groupheader\n";
     foreach ($group as $name => $test) {
       $nr ++;
+      if (in_array($nr, $skip))
+        continue;
+      if (isset($only) && $nr != $only)
+        continue;
       
       $haml = $test['haml'];
       $expected = $test['html'];
@@ -50,17 +57,28 @@ foreach (array(
       // try {
 
         $f = "test$nr";
-        eval(Haml::hamlToPHPStr($haml, $f));
+        if (isset($only));
+        echo "haml:\n$haml\n";
+        $opts = array('filename' => $name);
+        $hamlTree = new HamlTree($haml, array_merge($opts, d($test,'config',array())));
+        var_export($hamlTree->childs);
+        $php = Haml::treeToPHP($hamlTree, $f);
+
+        // $php = Haml::hamlToPHPStr($haml, d($test,'config',array()), $f); 
+        echo "start\n";
+        echo $php;
+        echo "end\n";
+        eval($php);
         $rendered = $f(d($test,'locals',array()));
 
-        /*
+/*
       } catch (Exception $e){
         $rendered =
           (d($test,'expect_parse_failure', false))
           ? null
           : "Exception: ".$e->getMessage();
       }
-         */
+*/
 
       list($e_s, $got_s) = array_map('strip', array($expected, $rendered));
 
@@ -72,6 +90,7 @@ foreach (array(
         echo "failed:\n";
         echo "expected: $e_s\n";
         echo "got: $got_s\n";
+        var_export($test);
         $max_failures --;
         if ($max_failures == 0)
           exit(0);

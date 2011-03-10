@@ -19,6 +19,43 @@ Status:
 
 BUGS:
 =====
+  Make test 58 work
+  expected: hello&#x000A;<p></p>
+  got: hello<p></p>
+
+  
+  The filter functions are checked when creating the template PHP code only.
+  Thus you have to delete old templates using filters you want to forbid
+  manually.
+
+  suppress_eval is not implemented yet. I don't know how to handle
+
+    - foreach( .. ){
+
+  or
+
+    - if 
+        ..
+    - else
+        ..
+
+  without causing syntax errors.
+  
+
+  Probably parsing is slow. I agree. But at it works at least :)
+  See related work about alternatives
+
+  #{} only works it attr values or attr names.
+
+  Multiline strings not yet supported. Can we do better?
+
+  There is no :ruby filter. a :php filter has been added instead using eval()
+  Of course globals etc are accessible - so use with caution.
+  For this reason suppress_eval defaults to true.
+
+  There are no :sass :textile :markdown :maruku :erb filters.
+  Don't think they should be part of this library. I'm a friend of modular
+  reusable code.
 
   If you find bugs use the gituhub's bugs create a test case and send a patch,
   please.
@@ -46,6 +83,18 @@ BUGS:
   no caching provided yet. a simple file caching (using locking) should be
   implemented
 
+  This is valid ruby-haml but not documented:
+  #A{:id = ["a" "b"]}
+  it yields id="ab" !? Not implemented here
+
+  Duplicate keys are dropped based on the code generating them - not by the
+  result. Example:
+  #d{ '#{uniqid}' => "x", '#{uniqid}' => 'y'}
+  will only yield <div unique='y'></div>
+  Fixing this would require more logic to be executed when the template is run.
+  Possible but more work. Do you need it?
+  Also if the attr name evaluates to class / id it may be duplicated
+
 Usage:
 ======
   $haml = "%div = $key"
@@ -63,6 +112,8 @@ Note:
   This library of course is limited by PHP. The language still sucks.
   I still tried getting the best out of it.
 
+  I thought I'd manage to keep LOC below 1000. I failed.
+
 TODO test quoting in all cases:
 ===============================
   %div = 
@@ -77,6 +128,10 @@ TODO test quoting in all cases:
   #{} in text blocks
 
   use namespace!
+  
+  #{} in filters
+
+  test cases for - foreach(..) blocks and if .. else
 
 Why do I use HAML:
 ==================
@@ -148,11 +203,8 @@ Most of the related work has been found using wikipedias haml page
       would eventually become impossible to maintain. "
 
     me: I agree. Its a challenge :)
-        But you yourself say why it won't work: You have to reimplement PHP
-        parsers for each PHP version *shrug*. You want to maintain that?
-        That's why I used the 20/80 rule and used a recursive regex.
-        See arbitraryPHPCode. It should be good enough for almost all cases.
-        Proof me wrong please :)
+        Actually teh code is using some very simple parsing combinators ..
+        So I hope the code is somewhat understandable and maintainable.
 
     me: Which sass implementation do you use?
     dxw: " original sass that comes with HAML
@@ -178,5 +230,3 @@ Most of the related work has been found using wikipedias haml page
         haml: %input(checked=true)
         expected: : <input checked>
              got: : <input>  (checked=true)</input>
-
-  This is a rewrite.

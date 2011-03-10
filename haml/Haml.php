@@ -23,50 +23,90 @@
 
 class HamlParseException extends Exception {}
 
+// see filter option in option_defaults
+class Filters {
+  static public function plain($encoding, $s){ return $s; }
+  static public function javascript($encoding, $s){
+      return 
+"<script type='text/javascript'>
+  //<![CDATA[
+    $s
+  //]]>
+</script>";
+  }
+  static public function css($encoding, $s){
+    return 
+"<style type='text/css'>
+  /*<![CDATA[*/
+    $s
+  /*]]>*/
+</style>";
+  }
+  static public function cdata($encoding, $s){
+    return 
+"<![CDATA[
+    $s
+  ]]>
+";
+  }
+  static public function escaped($encoding, $s){
+    echo "XXY\n";
+    var_dump($s);
+    return htmlentities($s, ENT_QUOTES, $encoding);
+  }
+  static public function php($encoding, $s){
+    ob_start();
+    ob_implicit_flush(false);
+    eval($s);
+    return ob_get_clean();
+  }
+  static public function preserve($encoding, $s){
+    // how to do this ?
+    return htmlentities($s, ENT_QUOTES, $encoding);
+  }
+  // TODO sass, textile, markdown, maruku, ...
+}
+
 class HamlParser {
   public $s; // the haml file contents as string
   public $o; // file offset
 
   // returns array($line, $col)
   public function pos(){
-    $lines = explode("\n",substr($this->s, $o));
+    $lines = explode("\n",substr($this->s, $this->o));
     $len = count($lines);
     return array($len, strlen($lines[$len-1]));
   }
 
   protected function error($msg){
     list($l,$c) = $this->pos();
-    throw new HamlParseException($this->name.":$l:$c: $error parsing haml: $msg");
+    throw new HamlParseException($this->options['filename'].":$l:$c: error parsing haml: $msg");
   }
 
   // increases offset on if str matches at offset
-  protected function str($s, $msg = null){
+  protected function str($s){
     if (substr($this->s, $this->o, $l = strlen($s)) == $s){
       $this->o += $l;
       return true;
     }
-    if ($msg == null)
-      return false;
-    else $this->error($msg);
+    return false;
   }
 
   // increases offset on if reg matches at offset
-  protected function reg($reg, &$m, $msg = null){
+  protected function reg($reg, &$m){
     $reg = str_replace('\s',' \t', $reg);
     if (preg_match('/(?m)'.$reg.'/', $this->s, $m, 0, $this->o)){
       return $this->str($m[0]); // force matching at ^
     }
-    if ($msg == null)
-      return false;
-    else $this->error($msg);
+    return false;
   }
 
   // combinators {{{2
   // a parser is a method name and a list of arguments
   // eg array('sequence'[, .. the args]);
-  // all p* parser reset ->o pointer if they fail
+  // all p* parser reset offset ->o pointer if they fail
 
-  // cerate bad result
+  // create bad result
   protected function pFail($msg){
     return array('msg' => $msg, 'o' => $this->o);
   }
@@ -85,20 +125,20 @@ class HamlParser {
   protected function p2(&$r){
     $args = func_get_args();
     array_shift($args);
-    $r =& $this->p($args);
-    return ($this->pOk($r));
+    $r = $this->p($args);
+    return ($this->rOk($r));
   }
   protected function p($p){
-    if ($p === 'nop')
-      return $this->pOk(true);
     $name = array_shift($p);
     return call_user_func_array(array(&$this, $name), $p);
   }
   // if parser succeds apply function to result
-  protected function pApply($f, $p){
+  protected function pApply($eval_, $p){
     $r = $this->p($p);
     if ($this->rOk($r)){
-      $r['ok'] = $f[$p['ok']];
+      $R = $r['r'];
+      eval($eval_);
+      $r['r'] = $R;
     }
     return $r;
   }
@@ -108,23 +148,31 @@ class HamlParser {
     $r = $this->p($p);
     if ($this->rOk($r))
       return $r['r'];
-    else $this->pError($msg);
+    else $this->pFail($msg);
   }
 
+  // first arg map, following args parsers
+  // if map is numeric that index is returned
+  // if its a string its evaled
   protected function pSequence(){
     $o = $this->o;
     $args = func_get_args();
-    $results = array();
+    $R = array();
+    $map = array_shift($args);
     foreach ($args as $p) {
       $r = $this->p($p);
       if ($this->rOk($r))
-        $results[] = $r['r'];
+        $R[] = $r['r'];
       else {
         $this->o = $o;
         return $r;
       }
     }
-    return $this->pOk($results);
+    if (is_string($map)){
+      eval($map);
+    }elseif (is_numeric($map))
+      $R = $R[$map];
+    return $this->pOk($R);
   }
 
   protected function pChoice(){
@@ -137,16 +185,16 @@ class HamlParser {
         return $r;
       else {
         $this->o = $o;
-        $bad[] = var_export($r, true);
+        $bad[] = $r;
       }
     }
-    return $this->pFail('one of '.implode(',', $bad));
+    return $this->pFail($bad);
   }
 
   protected function pStr($s){
     $o = $this->o;
     if ($this->str($s))
-      return array('r' => $s);
+      return $this->pOk($s);
     else {
       $this->o = $o;
       return $this->pFail("expected : $s");
@@ -159,7 +207,43 @@ class HamlParser {
       return $this->pOk(isset($m[1]) ? $m[1] : true);
     else {
       $this->o = $o;
-      return $this->pFail("expected regex : $s");
+      return $this->pFail("expected regex : $reg");
+    }
+  }
+
+  // 0 or more
+  protected function pMany($extra, $p){
+    $R = array();
+    while (true){
+      $r = $this->p($p);
+      if ($this->rOk($r))
+        $R[] = $r['r'];
+      else {
+        if (is_string($extra))
+          eval($extra);
+        return $this->pOk($R);
+      }
+    }
+  }
+
+  // 1 or more
+  protected function pMany1($extra, $p){
+    $R = array();
+    $r = $this->p($p);
+    if ($this->rOk($r))
+      $R[] = $r['r'];
+    else
+      return $r;
+
+    while (true){
+      $r = $this->p($p);
+      if ($this->rOk($r)){
+        $R[] = $r['r'];
+      } else {
+        if (is_string($extra))
+          eval($extra);
+        return $this->pOk($R);
+      }
     }
   }
 
@@ -172,7 +256,7 @@ class HamlParser {
       while (true){
         $i = $this->p($sep);
         if (!$this->rOk($i))
-          return $items;
+          return $this->pOk($items);
         else {
           $i = $this->p($item);
           if ($this->rOk($i))
@@ -217,10 +301,10 @@ class HamlParser {
     assert(array('r' => '1') === $this->p($pChoice)); 
 
     $this->o = 0;
-    $r = $this->pSequence(array('pStr','1'),array('pStr','2'));
+    $r = $this->pSequence(null, array('pStr','1'),array('pStr','2'));
     assert(array('r' => array('1','2')) === $r);
-    $r2 = $this->pSequence(array('pStr','['),array('pSepBy', array('pStr',','), $pChoice), array('pStr', ']'));
-    assert(array('r' => array(true, array(true,true), array(true))) === $r2);
+    $r2 = $this->pSequence(null, array('pStr','['),array('pSepBy', array('pStr',','), $pChoice), array('pStr', ']'));
+    assert(array('r' => array('[', array('1','2'), ']')) === $r2);
   }
 
 }
@@ -251,8 +335,11 @@ class HamlTree extends HamlParser {
   public $doctype;
   public $tree = null;
   public $list = array(); // filled by step 3)
+  public $options;
 
-  function __construct($s, $name, $options, $parse = true){
+  public $childs; // the parsed representation.
+
+  function __construct($s, $options, $parse = true){
     // {{{2
     $options_defaults = array(
       /*
@@ -262,7 +349,7 @@ class HamlTree extends HamlParser {
       except there are no self-closing tags, the XML prolog is ignored and 
       correct DOCTYPEs are generated.  :escape_html
        */
-      'format' => 'html', // not implemented yet
+      'format' => 'xhtml', // not implemented yet
       /*
       Sets whether or not to escape HTML-sensitive characters in script. If 
       this is true, = behaves like &=; otherwise, it behaves like !=. Note 
@@ -284,21 +371,21 @@ class HamlTree extends HamlParser {
        * be evaluated. If this is true, said scripts are rendered as empty strings. 
        * Defaults to false.
        */
-      'suppress_eval' => false, // not implemented yet
+      'suppress_eval' => false,
 
       /* The character that should wrap element attributes. This defaults to ' (an
       * apostrophe). Characters of this type within the attributes will be escaped 
       * (e.g. by replacing them with &apos;) if the character is an apostrophe or a 
       * quotation mark.
        */
-      'attr_wrapper' => "'", // not implemented yet
+      'attr_wrapper' => "'",
 
       /* The name of the Haml file being parsed. This is only used as information 
       * when exceptions are raised. This is automatically assigned when working 
       * through ActionView, so it’s really only useful for the user to assign when 
       * dealing with Haml programatically.
        */
-      'filename' => '<no file>', // not implemented yet
+      'filename' => '<no file>',
 
        /* The line offset of the Haml template being parsed. This is useful for inline 
        * templates, similar to the last argument to Kernel#eval.
@@ -310,7 +397,7 @@ class HamlTree extends HamlParser {
       * any object which responds to #===). Defaults to ['meta', 'img', 'link', 'br',
       * 'hr', 'input', 'area', 'param', 'col', 'base']. // not implemented yet
        */
-      'autoclose' => array('meta','img','link','br','hr','input','area','param','col','base'), // not implemented yet
+      'autoclose' => array('meta','img','link','br','hr','input','area','param','col','base'),
 
       /* A list of tag names that should automatically have their newlines preserved 
       * using the Haml::Helpers#preserve helper. This means that any content given on 
@@ -339,39 +426,77 @@ class HamlTree extends HamlParser {
       'encoding' => "utf-8", // not implemented yet
     ); // }}}2
 
+    $options_defaults['filters'] = array(
+      'plain' => 'Filters::plain',
+      'javascript' => 'Filters::javascript',
+      'css' => 'Filters::css',
+      'cdata' => 'Filters::cdata',
+      'escaped' => 'Filters::escaped',
+      'php' => 'Filters::php',
+      'preserve' => 'Filters::preserve',
+      // ...
+    );
 
-    $this->opts = array_merge($options_defaults, $options);
-    $this->s = $s;
-    $this->len = strlen($s);
+
+
+    $this->idItem = serialize(self::toNameItem('id'));
+    $this->classItem = serialize(self::toNameItem('class'));
+
+    $this->options = array_merge($options_defaults, $options);
+    $this->s = $s."\n"; // \n so that it gets parsed
+    $this->len = strlen($this->s);
     $this->o = 0;
-    $this->name = $name;
+    if (preg_match('/(?m)\n([ \t]+)/',$s,$m))
+      $this->ind = $m[1];
+    else
+      $this->ind = '  '; // prevent childs from being parsed
+
+    // any number of spaces, returns \n
+    $this->pEmptyLine = array('pApply', '$R = array(array("text" => "\n"));', array('pReg','[\s]*\n'));
+    // parses rest of line (after indentation) and \n
+    $this->pTextContentLine = array('pSequence', '$R = $R[0]; $R[] = array("text" => "\n");', $this->interpolatedString("\n"), array('pStr', "\n"));
+
     if ($parse)
       $this->parseHAML();
+
+  }
+
+  static public function array_merge($list){
+    if (count($list) == 0)
+      return array();
+    elseif (count($list) == 1)
+      return $list[0];
+    $r = call_user_func_array('array_merge', $list);
+    return $r;
+  }
+
+  static public function toNameItem($s){
+    return array(array("text" => $s));
   }
 
   // render items {{{2
   protected function rText($s, $quoted){
     if ($quoted)
-      $s = htmlentities($s, $this->options['encoding']);
-    $this->items[] = array('text' => $s);
+      $s = htmlentities($s, ENT_QUOTES, $this->options['encoding']);
+    $this->list[] = array('text' => $s);
   }
 
   protected function rEchoPHP($php, $quoted){
     if ($quoted)
-    $php = "htmlentities(".$php.", ".var_export($this->options['encoding']).")";
-    $this->items[] = array('phpecho' => $php);
+      $php = "htmlentities(".$php.", ENT_QUOTES, ".var_export($this->options['encoding'],true).")";
+    $this->list[] = array('phpecho' => $php);
   }
 
-  protected function rPHP($php, $hasChilds){
+  protected function rPHP($php, $hasChilds = false){
     if ($hasChilds)
       $php .= '{';
-    $this->items[] = array('php' => $php);
+    $this->list[] = array('php' => $php);
   }
 
   // preparing rendering {{{2
   // Also see treeToPHP
 
-  function doctype(&$list){/*{{{*/
+  function doctype(){/*{{{*/
     // TODO
     return '';
     /* TODO convert this ruby code somehow and find out how it is calledin Ruby HAML
@@ -416,63 +541,171 @@ class HamlTree extends HamlParser {
   }/*}}}*/
 
   public function flatten(){
-    $this->flattenChilds($list, $this->childs);
+    $this->flattenChilds($this->childs);
   }
 
-  protected function flattenChilds( $childs){
-    array_map(array($this,'flattenThing'), $childs);
+  protected function flattenChilds($childs){
+    foreach ($childs as $c) {
+      $this->flattenThing($c);
+    }
   }
 
   protected function d($ar, $key, $default){
     return isset($ar[$key]) ? $ar[$key] : $default;
   }
 
+  protected function rItems($l, $quote){
+    foreach ($l as $v) {
+      if (isset($v['text']))
+        $this->rText($v['text'], $quote);
+      elseif (isset($v['phpvalue']))
+        $this->rEchoPHP($v['phpvalue'], $quote);
+      else throw new Exception('bad item '.var_export($v,true));
+    }
+  }
+
   protected function flattenThing(array $thing){
+    $html = substr($this->options['format'], 0, 4) == 'html';
+    $q = $this->options['attr_wrapper'];
     if (isset($thing['type'])){
       switch ($thing['type']) {
+        case 'text':
+          $this->rItems($thing['items'], true);
+          break;
+        case 'conditional-comment':
+          $this->rText('<!--['.$thing['condition'].']>', false);
+          if (isset($thing['childs']))
+            foreach ($thing['childs'] as $v) {
+              $this->flattenThing($v);
+            }
+          $this->rText('<![endif]-->',false);
+          break;
+        case 'filter':
+          if (!isset($this->options['filters'][$thing['filter']]))
+            $this->error('bad filter: '.$thing['filter']); // TODO location?
+          $text = array();
+          foreach ($thing['items'] as $i) {
+            if (isset($i['phpvalue']))
+              $text[] = $i['phpvalue'];
+            elseif (isset($i['text']))
+              $text[] = var_export($i['text'],true);
+            else assert(false);
+          }
+            /// var_export($thing['text'], true)
+          $this->rEchoPHP($this->options['filters'][$thing['filter']].'('.var_export($this->options['encoding'],true).','.implode('.',$text).')', false);
+          break;
+        case 'inline-comment':
+          $this->rText('<!--', false);
+          $this->rItems($thing['items'], false);
+          $this->rText('-->', false);
+          break;
+        case 'silent-comment':
+          break;
         case 'tag':
           // TODO optimize
-          $n = $thing['name'];
-          $autoclose = in_array($n, $this->options['autoclose']);
+          $tag_name = $thing['name'];
+          $autoclose = in_array($tag_name, $this->options['autoclose']);
           $childs = $this->d($thing,'childs',array());
           if ($autoclose && count($childs) > 0)
-            $this->error('tag found '.$n.' which should autoclose but has children!');
+            $this->error('tag found '.$tag_name.' which should autoclose but has children!');
 
           // tag open and name
-          $this->rTextUnquoted("<$n ");
+          // TODO: add indentation here for pretty rendering?
+          $this->rText("<$tag_name", false);
           // attributes
           # classes are sorted. dups are removed.
-          $classes = array_flip($this->d($thing, 'class', array()));
-          $id = $this->d($thing,'id',array());
-          if (count($id) > 1) # last id wins in #A#B
-            $id = array_slice($id, 0, count($id) -1);
+          $classes = $this->d($thing, 'classes', array());
+          $class = array();
+          foreach ($classes as $c){
+            $class[] =self::toNameItem($c);
+          }
+          $id = isset($thing['id'])
+            ? array(self::toNameItem($thing['id']))
+            : array();
+
+          $collect = array(
+            $this->idItem => 'id',
+            $this->classItem => 'class'
+          );
           $attrs = array();
-          foreach ($this->d($thing, 'attrs', array()) as $v) {
+          foreach ($this->d($thing, 'attrs', array()) as $a) {
+            foreach ($a as $attr => $value) {
+              if (isset($collect[$attr])) {
+                ${$collect[$attr]} = array_merge(${$collect[$attr]}, $value);
+              } else {
+                $attrs[$attr] = $value;
+              }
+            }
+          }
+          // render classes (dynamic because haml removes duplicates. The duplicates are known at runtime)
+          array_unique($class);
+          if (count($class) > 0){
+            $this->rText(" class=$q", false);
+            $class_items = array();
+            $items = array();
+            foreach ($class as $class_item) {
+              $item_builder = array();
+              foreach ($class_item as $cii) {
+                if (isset($cii['text']))
+                  $item_builder[] = var_export($cii['text'],true);
+                elseif (isset($cii['phpvalue'])){
+                  $item_builder[] = $cii['phpvalue'];
+                }
+              }
+              $items[] = implode('.',$item_builder);
+            }
+            $this->rEchoPHP('Haml::renderClassItems(array('.implode(',',$items).'))', true);
+            $this->rText("$q", false);
+          }
+          // render id
+          if (count($id) > 0){
+            $this->rText(" id=$q", false);
+            $sep = '';
+            foreach ($id as $id_item) {
+              if ($sep != '') $this->rText($sep, true);
+              $this->rItems($id_item, true);
+              $sep = "_";
+            }
+            $this->rText("$q", false);
+          }
+
+          // render remaining attrs
+          foreach ($attrs as $key => $v) {
+            $this->rText(" ",false);
+            $this->rItems(unserialize($key), false);
+            $this->rText("=$q", false);
+            $this->rItems($v, true);
+            $this->rText("$q", false);
           }
 
           if ($autoclose){
-          
+            $this->rText("".($html ? '' : ' /').">", false);
           } else {
+            $this->rText('>', false);
+            foreach ($childs as $v) {
+              $this->flattenThing($v);
+            }
+            $this->rText("</$tag_name>", false);
           }
           break;
         case 'block':
-          
+          $hasC = count($thing['childs']) > 0;
+          $this->rPHP($thing['php'], $hasC);
+          foreach ($thing['childs'] as $c) {
+            $this->flattenThing($c);
+          }
+          if ($hasC)
+            $this->rPHP('}');
+          break;
         default:
           throw new Exception('missing implementation');
       }
     } elseif (isset($thing['phpecho'])){
-      $list[] = $thing;
-    } elseif (isset($thing['php'])){
-      // if childs add { .. }
-      $has_childs = isset($thing['childs']);
-      $list[] = array('php' => $thing['php'].($has_childs ? '{' : ''));
-      if ($has_childs){
-        foreach ($list['childs'] as $c) $this->flattenThing($list, $c);
-        $list[] = array('php' => '}');
-      }
+      $this->rEchoPHP($thing['phpecho'], $thing['escape_html']);
     } elseif (isset($thing['text'])){
-      $list[] = $thing;
-    }
+      $this->rText($thing['text'], true);
+    } else
+      throw new Exception('implement: '.var_export($thing,true));
   }
 
   // }}}
@@ -481,124 +714,199 @@ class HamlTree extends HamlParser {
 
   protected function parseHAML(){
     // parse optional !!! doctype
-    if ($this->str('!!!')){
-      $this->reg('[\s]*');
-      $this->doctype = $this->reg('[^\s]', 'doctype expected', $m);
-      $this->reg('\n', 'new line expeced');
-    }
-    $this->childs = $this->parseChilds(0,'');
+    if ($this->p2($r, 'pReg', '!!![\s]*([^\n]+)')){
+      $this->doctype = $r['r'];
+    }else
+      $this->doctype = null;
+   
+    $this->childs = $this->pError('failed parsing haml', array('pChilds',0,''));
+    if ($this->o < $this->len-1)
+        $this->error('parsing stopped. 10 of the first remaining chars:'.var_export(substr($this->s,$this->o,10),true));
   }
 
   protected function eof(){
     return $this->o >= $this->len;
   }
 
-  protected function getIndent(){
-    if (is_null($this->ind)){
-      // first indent or still no indent
-      if ($this->reg('([\s]+)',$m)){
-        $this->ind = $m[1];
-      }
-      return 1;
-    } else {
-      $new_ind = 0;
-      while ($this->str($this->ind)){
-        $new_ind ++;
-      }
-      $this->new_ind = $new_ind;
-      return $new_ind;
-    }
-  }
-
-  protected function previewIndent(){
-    $o = $this->o;
-    $i = $this->getIndent();
-    $o = $this->o;
-    return $i;
-  }
-
   // always returns array of children which may be empty
-  // if no children was found. No children is found if indentation decreases
-  protected function parseChilds($expected_ind, $ind_str){
-    $childs = array();
-    $last = null;
-
-    $o = $this->o;
-    $new_ind = $this->previewIndent();
-
-    $this->o = $o;
-    if ($new_ind == $expected_ind){
-      // same indentation: no childs
-      return array();
-    }
-
-    if ($new_ind > $expected_ind +1){
-      $this->error('the line is indented '.($new_ind - $expected_ind).' levels too deep');
-    }
-
-    if ($new_ind = $expected_ind+1){
-      $ind_N = $ind_str.$this->ind;
-      // parse children
-      while (!$this->eof()){
-        if ($new_ind > $expected_ind){
-          $o2 = $this->o;
-          if (null !== $child = $this->parseTag($new_ind, $ind_N)){
-            // tag parsed
-          } elseif (null !== $block = $this->parseText($new_ind, $ind_N) ){
-            // block parsed
-            $childs[] = $block;
-          } elseif (null !== $list = $this->parseText($new_ind, $ind_N) ){
-            // text parsed
-            $childs = array_merge($childs, $list);
-          } else {
-            $this->error('child (tag or text) expected');
-          }
-        }
-      }
-    }
-    // else: indentation decreases. return empty array
-    return $childs;
+  // if no children are found. No children are found if indentation decreases
+  protected function pChilds($expected_ind, $ind_str){
+    return $this->pMany(
+        null
+      , array('pChoice'
+              , array('pConditionalComment', $expected_ind, $ind_str) # /[IE] ..
+              , array('pInlineComment', $expected_ind, $ind_str)      # /
+              , array('pSilentComment', $expected_ind, $ind_str)      # -#
+              , array('pFilter', $expected_ind, $ind_str)             # :
+              , array('pPHP', $expected_ind, $ind_str)
+              , array('pTag', $expected_ind, $ind_str)
+              , array('pText', $expected_ind, $ind_str)
+              , array('pBlock', $expected_ind, $ind_str)
+          )
+    );
   }
 
-  protected function parseBlock($expectedIndent, $ind_str){
-    if (!$this->str($ind_str.'-')) return null;
-    $this->reg('([^\n]*)\n',$m);
-    $ind = $this->previewIndent();
-    // too big indenting will be catched by parent
-    if ($ind == $expectedIndent +1){
-      // nested loop or if or else
-      $childs = $this->parseChilds($expectedIndent+1, $ind_str.$this-ind);
+  // rest of line starting by = != &=
+  protected function pPHPAssignment(){
+    return $this->p(array('pSequence'
+        , '
+        var_dump("X");
+        var_dump($R);
+        $R = array( "phpecho" => $R[1],
+                    "escape_html" => ($this->options["escape_html"] && $R[0] != "!=")
+                                    || ($R[0] == "&=")
+                  );
+        '
+        , array('pReg','(=|!=|[&]=)')
+        , array('pArbitraryPHPCode',true)
+        , array('pStr',"\n")
+      ));
+  }
+
+  protected function pPHP($expected_ind, $ind_str){
+    return $this->p(array('pSequence',1
+      , array('pStr',$ind_str)
+      , array('pPHPAssignment')));
+  }
+
+  protected function pStringNoInterpolation($stopat){
+    $o = $this->o;
+    $s = '';
+    while ($this->o < $this->len){
+      $c = $this->s[$this->o];
+      if (strpos($stopat, $c)!== false){
+        break;
+      } elseif ($c == '\\'){
+        $c2 = $this->s[$this->o+1];
+        if ($c2 == '#' || $c2 == '\\'){
+          $s .= $c2;
+          $this->o++;
+        }
+      } elseif ($c == '#'){
+        break;
+      } else {
+        $s .= $c;
+      }
+      $this->o++;
     }
+    if ($s !== '')
+      return $this->pOk(array('text' => $s));
+    else {
+      $this->o = $o;
+      return $this->pFail('str expected');
+    }
+  }
+
+  // parser #{...}
+  protected function pInterpolation(){
+    $o = $this->o;
+    if ($this->str('#{')){
+      if (!$this->p2($code, 'pArbitraryPHPCode',true)){
+        $this->o = $o; return $code;
+      }
+      if (!$this->p2($r, 'pStr', '}')){
+        $this->o = $o; return $r;
+      }
+      return $this->pOk(array('phpvalue' => $code['r']));
+    } else return $this->pFail('#{ expected');
+  }
+
+  # parse text maybe containing #{} till $stopA 
+  protected function interpolatedString($stopAt){
+    return array('pMany1', null
+                , array('pChoice'
+                    , array('pInterpolation')
+                    , array('pStringNoInterpolation', $stopAt)));
+  }
+
+  protected function textLine($ind_str){
+    return array('pChoice'
+        , $this->pEmptyLine
+        , array('pSequence', 1, array('pStr', $ind_str), $this->pTextContentLine));
+  }
+
+  protected function pFilter($expectedIndent, $ind_str){
+      return $this->pSequence(
+                  '$R = array("type" => "filter", "filter" => $R[0], "items" => $R[1]);'
+                 // name
+                 , array('pReg',$ind_str.':([^\n\s]+)\n') /* name */
+                 // text
+                 , array('pMany', '$R = HamlTree::array_merge($R);', $this->textLine($ind_str.$this->ind))
+      );
+  }
+
+
+  protected function pConditionalComment($expectedIndent, $ind_str){
+    return $this->pSequence(
+      '$R = array("type" => "conditional-comment", "condition" => $R[0], "childs" => $R[1]);'
+      , array('pReg', $ind_str.'\/\[([^\]]+)\][\s]*\n')
+      , array('pChilds', $expectedIndent + 1, $ind_str.$this->ind));
+  }
+
+  protected function pInlineComment($expectedIndent, $ind_str){
+    return $this->pApply(
+        '$R = array("type" => "inline-comment", "items" => $R);'
+        , array('pChoice'
+          // one line
+          , array('pSequence', 1, array('pStr', $ind_str.'/'), $this->pTextContentLine)
+          // multiple lines
+          , array('pSequence'
+              , 1
+              , array('pReg', $ind_str.'\/[\s]*'."\n")
+              , array('pMany', '$R = HamlTree::array_merge($R);'
+                      , $this->textLine($ind_str.$this->ind)))
+       ));
+  }
+
+  protected function pSilentComment($expectedIndent, $ind_str){
+    return $this->pApply(
+      '$R = array("type" => "silent-comment");'
+      , array('pSequence'
+        , null
+        , array('pReg', $ind_str.'-#[^\n]*\n')
+        , array('pMany', null, array('pReg',$ind_str.$this->ind.'[^\n]*\n'))
+      ));
+  }
+
+  protected function pBlock($expectedIndent, $ind_str){
+    return $this->pSequence(
+      '$R = array("type" => "block", "php" => $R[0], "childs" => $R[1]);'
+      , array('pReg', $ind_str.'-([^\n]*)\n')
+      , array('pChilds', $expectedIndent + 1, $ind_str.$this->ind)
+      );
   }
 
   // returns tag array('type' => tag, 'name' => tag, 'attributes' => array, childs => array) or null
-  protected function parseTag($expectedIndent, $ind_str){
-    if (!$this->str($ind_str))
-      return null;
+  protected function pTag($expectedIndent, $ind_str){
+    if (!$this->str($ind_str) || $this->eof())
+      return $this->pFail('other indentation expected');
     // HAML has wired properties "haml" : "%p#id(id='1')" -> "html" : "<p id='id_1'></p>"
     // thus store css values separately and merge them the HAML way when PHP is generated 
     
     $o = $this->o;
     # optional tag name defaulting to div (eg #table)
-    $tag = array('id' => array(), 'classes' => array(), 'ind' => $ind_str);
-    if ($this->reg('%([^\s.#]+)',$m)){
+    $tag = array('type' => 'tag', 'classes' => array(), 'ind' => $ind_str);
+    if ($this->reg('%([^\s.#\n({]+)',$m)){
       $tag['name'] = $m[1];
     } else $tag['name'] = 'div';
 
     # parse .foo and #bar CSS properties
-    while ($this->reg('#([^\s.#]+)|.([^\s.#]+)', $m)){
-      $in_loop = true;
-      if ($m[2] === '')
-        $tag['id'][] = $m[1];
-      elseif ($m[1] === '')
+    while ($this->reg('([#.])([^\s.#({\n]+)', $m)){
+      if ($m[1] === '#'){
+        # last overrides previous:
+        $tag['id'] = $m[2];
+      }elseif ($m[1] === '.'){
         // classes are all stored and will be separated by spaces
         $tag['classes'][] = $m[2];
-      else throw new Exception('unexpected');
+      }else {
+        var_dump($m);
+        throw new Exception('unexpected');
+      }
     }
-    if (!isset($in_loop) && $tag=='div'){
+    if ($this->o == $o){ // nothing consumed
       // neither CSS style and default div. This is not a tag line
       $this->o = $o;
-      return $this->pError('tag expected');
+      return $this->pFail('tag expected');
     }
     unset($in_loop);
 
@@ -610,60 +918,73 @@ class HamlTree extends HamlParser {
             '(' => array('pAttrs',"html"),
             '{' => array('pAttrs',"ruby")
       );
-      $tag['attrs'][] = $this->pError("parsing HTML like attrs", array($attrParsers[$m[1]]));
+      $tag['attrs'][] = $this->pError('error parsing attrs',$attrParsers[$m[1]]);
     }
 
-    if ($this->reg("=|!=|&=",$m)){
-      // after optional attributes the content assignment may take place:
-      // = != or &= assinment
-      $op = $m[1];
-      $code = $this->arbitraryPHPCode();
-      if (strpos($code,"\n")!== false)
-        $this->error("\\n not supported in != &= = assignments !?");
-      $tag['childs'] = array(array(
-        'phpecho' => $code,
-        'escape_html' => ($this->options['escape_html'] && $op != '!=')
-                      || ($op == '&=')
-      ));
+    // similar code in pPHP
+    if ($this->p2($r, 'pPHPAssignment')){
+      return $r;
+    } elseif ($this->p2($r, 'pApply', '', $this->pTextContentLine)){
+      $tag['childs'] = array(array('type' => 'text', 'items' => $r['r']));
     } else {
+      if (!$this->p2($r, 'pStr', "\n")){
+        $this->o = $o; return $r;
+      }
+
       // try parsing nested children
-      $tag['childs'] = $this->parseChilds($expectedIndent, $ind_str.$this->ind);
+      if ($this->p2($r, 'pChilds', $expectedIndent +1, $ind_str.$this->ind))
+        $tag['childs'] = $r['r'];
+      else 
+        $tag['childs'] = array();
     }
-    return $tag;
+    return $this->pOk($tag);
   }
 
   protected function pAttrs($type){
+    $o = $this->o;
     $sepsByType = array(
       'ruby' => array('pReg','[\s]*,[\s\n]*'),
       'html' =>  array('pReg','[\s\n]+')
     );
     $endByType = array(
-      'ruby' => '}',
-      'html' =>  ']'
+      'ruby' => '[\s]*}',
+      'html' =>  '[\s]*\)'
     );
-    $attributes = $this->pError('attribute list expecetd',  array('pSepBy', $sepsByType[$type], array('pAttr', $rubyLike)));
-    $t = $endByType[$type];
-    $this->pError($t, array('pStr',$t));
-
-    $attrs = array();
+    if (!$this->p2($r, 'pSepBy', $sepsByType[$type], array('pAttr', $type))){
+      return $r;
+    }
+    $attributes = $r['r'];
+    if (!$this->p2($r, 'pReg', $endByType[$type])){
+      $this->o = $o; return $r;
+    }
     // merge key = value pairs keeping the last occurrence only
-    return array_reduce($attributes, 'array_merge');
+    $r = array();
+    foreach ($attributes as $key_value_pair) {
+      foreach ($key_value_pair as $key => $value) {
+        $r[$key] = $value;
+      }
+    }
+    return $this->pOk($r);
   }
 
   protected function pAttr($type){
     $nameByType = array(
-      'html' => array('pReg','([\w]+)'),
-      'ruby' => array('pReg',':([\w]+)')
+      'html' => array('pApply', '$R = HamlTree::toNameItem($R);', array('pReg','[\s]*([\w]+)')),
+      'ruby' => array('pChoice'
+                      ,array('pApply', '$R = HamlTree::toNameItem($R);', array('pReg','[\s]*\:([\w]+)'))
+                      ,array('pAttrValueQuot')
+                    )
     );
     $sepByType = array(
       'html' => array('pStr','='),
-      'ruby' => array('pStr','[\s]*=>[\s]*')
+      'ruby' => array('pReg','[\s]*=>[\s]*')
     );
-    if (!$this->reg('[\w]+', $m))
-      $this->error('attr name expected');
-    $name = $m[1];
+    $r = $this->p($nameByType[$type]);
+    if (!$this->rOk($r))
+      $this->error($r['msg']);
+    $name = serialize($r['r']); // serialize info as string
     $this->pError('= or => expected depending on attr type', $sepByType[$type]);
-    return array($name => $this->pError('value maybe list', array('pAttrValue', $type, $name)));
+    return $this->pOk(array($name => $this->pError('value maybe list', array('pAttrValue', $type, $name))));
   }
 
   protected function pAttrValue($type, $name){
@@ -674,21 +995,22 @@ class HamlTree extends HamlParser {
 
     # parse php code or "..#{}.."
     $pAttrValue = array('pChoice'
-     , array('pApply', create_function('$s','return array(array("phpvalue" => $s));'),'pArbitraryPHPCode')
      , array('pAttrValueQuot')
+     , array('pApply','$R =  array(array("phpvalue" => $R));',array('pArbitraryPHPCode'))
      );
 
-    if (in_array($name, array('id','class'))){
+    if (in_array($name, array($this->idItem,$this->classItem))){
       # may be a list.
 
       $r = $this->pChoice(
-          array('pApply', create_function('$s','return array($s);'), $pAttrValue)
+          array('pApply', '$R = array($R);', $pAttrValue)
         , array('pSequencea'
-                , array('pStr','[')
+                , 1
+                , array('pReg','\[[\s]*')
                 , array('pSepBy'
                   , array('pReg',',[\s\n]*')
-                  ,       $pAttrValue)
-                , array('pStr',']'),
+                  , $pAttrValue)
+                , array('pReg','[\s]*\]'),
           )
       );
     
@@ -700,28 +1022,36 @@ class HamlTree extends HamlParser {
 
   //  "...#{} .. #{}.."
   //  returns list of array('text' => ..) array('phpecho' =>  .. )
-  protected function pAttrValueQuot($spacesOk){
+  protected function pAttrValueQuot(){
     $o = $this->o;
     $items = array();
     $s = '';
-    if (!$this->p2($r,'pStr','"')){
+    if (!$this->p2($r,'pReg','(["\'])')){
       $this->o = $o; return $r;
     }
+    $quotStyle = $r['r'];
      
     while (true){
-      if ($this->eof){
+      if ($this->eof()){
         $this->o = $o; return $this->pFail('no eof expected');
       }
       if ($this->str('#{')){
-        $items[] = array('text' => $s);
+        if ($s !== '')
+          $items[] = array('text' => $s);
         $s = '';
-        if (!$this->p2($r, 'pArbitraryPHPCode',$spacesOk)){
+        if (!$this->p2($code, 'pArbitraryPHPCode',true)){
           $this->o = $o; return $r;
         }
-        if (!$this->p2($r, 'str', '}')){
+        if (!$this->p2($r, 'pStr', '}')){
           $this->o = $o; return $r;
         }
         $items[] = array('phpvalue' => $code['r']);
+      } elseif ($this->s[$this->o] == '\\'){
+        $this->o++;
+        $s .= $this->s[$this->o++];
+      } elseif ($this->s[$this->o] == $quotStyle){
+        $this->o++;
+        break;
       } else {
         $s .= $this->s[$this->o++];
       }
@@ -729,12 +1059,7 @@ class HamlTree extends HamlParser {
     if ($s !== '')
       $items[] = array('text' => $s);
 
-    $x = $this->pStr('"');
-    if (!$this->p2($r, 'pStr', '"')){
-      $this->o = $o;
-      return $r;
-    }
-    return $items;
+    return $this->pOk($items);
   }
 
   protected function pArbitraryPHPCode($spacesOk = true){
@@ -750,31 +1075,28 @@ class HamlTree extends HamlParser {
       
       // keys are documentation only
       $items = array(
-        "' str" => '("[^"\\\\]+|\\.)*"',
-        '" str' => '([^\'\\\\]+|\\.)*\'',
+        '" str' => '("[^"\\\\]+|\\\\.)*"',
+        "' str" => '(\'[^\'\\\\]+|\\\\.)*\'',
         ', separated func args' =>  '\(((?R)(,(?R))*)\)',
         'recursion in ()' => '\((?R)\)', // this catches nested ( 2 + (4 + ) ) ..
         // '{(?R)}
-        ' anything else but terminal' => "[^(){},$s]+"
+        ' anything else but terminal' => "[^(){},\n$s]+"
       );
       $regex ='('. implode('|',$items).')+';
     }
     $this->reg($regex, $m);
     $s = substr($this->s, $o, $this->o - $o);
     if (strlen($s) > 0)
-      return $s;
+      return $this->pOk($s);
     else {
-      $this->o = $o; return null;
+      $this->o = $o; return $this->pFail("no arbitrary code");
     }
   }
 
-  protected function parseText($expectedIndent, $ind_str){
-    // TODO: HAML supports #{} in text as well
-    $text = '';
-    while ($this->str($ind_str)){
-      $text .= $this->reg('\([^\n]*\n)');
-    }
-    return array('text' => $text, 'ind' => $ind_str);
+  protected function pText($expectedIndent, $ind_str){
+    return $this->pMany1(
+      '$R = array("type" => "text", "items" => HamlTree::array_merge($R));'
+      , $this->textLine($ind_str));
   }
 
   // }}}
@@ -790,9 +1112,9 @@ class Haml {
     // this can be optimized probably
     foreach ($list as $l) {
       if (isset($l['phpecho'])){
-        $code .= "\$html .= ".$l['php'].";\n";
+        $code .= "\$html .= ".$l['phpecho'].";\n";
       } elseif (isset($l['php'])){
-        $code .= $l['php'].";\n";
+        $code .= "\$html .= ".$l['php'].";\n";
       } elseif (isset($l['text'])) {
         $code .= '$html .= '.var_export($l['text'],true).";\n";
       } elseif (isset($l['verbatim'])){
@@ -804,10 +1126,10 @@ class Haml {
       function $func_name(){
         \$args = func_get_args();
         // put vars in scope:
-        foreach ($args as $arr) { extract($arr); }
+        foreach (\$args as \$arr) { extract(\$arr); }
         \$html = '';
         $code
-        return $html;
+        return \$html;
       }
     ";
   }
@@ -818,7 +1140,7 @@ class Haml {
     // this can be optimized probably
     foreach ($list as $l) {
       if (isset($l['phpecho'])){
-        $code .= '<?php echo '.$l['php'].")?>";
+        $code .= '<?php echo '.$l['phpecho'].")?>";
       } elseif (isset($l['php'])){
         $code .= '<?php '.$l['php']."?>";
       } elseif (isset($l['text'])) {
@@ -846,19 +1168,25 @@ class Haml {
     $hamlTree->doctype();
     $hamlTree->flatten();
     if (is_null($func_name))
-      return $this->phpRenderer($hamlTree->list, $hamlTree->options['encoding']);
+      return self::phpRenderer($hamlTree->list);
     else
-      return $this->funcRenderer($hamlTree->list, $hamlTree->options['encoding'], $func_name);
+      return self::funcRenderer($hamlTree->list, $func_name);
   }
 
-  static public function hamlToPHPStr($str, $name = 'no location', $options = array(), $func_name = null){
-    return self::treeToPHP(new HamlTree($str, $name, $options), $func_name);
+  static public function hamlToPHPStr($str, $options = array(), $func_name = null){
+    return self::treeToPHP(new HamlTree($str, $options), $func_name);
   }
 
   // minimal test of the parser
   static public function hamlInternalTest(){
-    $p = new HamlTree("",'test location', array(), false);
+    $p = new HamlTree("", array(), false);
     $p->selfTest();
   }
+
+  static public function renderClassItems($items){
+    $no_dups = array_unique($items);
+    sort($no_dups);
+    return implode(' ',$no_dups);
+  }
 }
-// vim: fdm:marker
+// vim: fdm=marker
