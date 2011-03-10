@@ -50,14 +50,11 @@ class Filters {
 ";
   }
   static public function escaped($encoding, $s){
-    echo "XXY\n";
-    var_dump($s);
     return htmlentities($s, ENT_QUOTES, $encoding);
   }
   static public function php($encoding, $s){
     ob_start();
     ob_implicit_flush(false);
-    eval($s);
     return ob_get_clean();
   }
   static public function preserve($encoding, $s){
@@ -219,8 +216,9 @@ class HamlParser {
       if ($this->rOk($r))
         $R[] = $r['r'];
       else {
-        if (is_string($extra))
+        if (is_string($extra)){
           eval($extra);
+        }
         return $this->pOk($R);
       }
     }
@@ -240,8 +238,9 @@ class HamlParser {
       if ($this->rOk($r)){
         $R[] = $r['r'];
       } else {
-        if (is_string($extra))
+        if (is_string($extra)){
           eval($extra);
+        }
         return $this->pOk($R);
       }
     }
@@ -606,8 +605,8 @@ class HamlTree extends HamlParser {
           $tag_name = $thing['name'];
           $autoclose = in_array($tag_name, $this->options['autoclose']);
           $childs = $this->d($thing,'childs',array());
-          if ($autoclose && count($childs) > 0)
-            $this->error('tag found '.$tag_name.' which should autoclose but has children!');
+          if ($autoclose && count($childs) > 0 && ($childs !== array ( array ( 'type' => 'text', 'items' => array ( array ( 'text' => "\n"))))) )
+            $this->error('tag "'.$tag_name.'" found which should autoclose but has children !'.var_export($childs,true));
 
           // tag open and name
           // TODO: add indentation here for pretty rendering?
@@ -714,7 +713,7 @@ class HamlTree extends HamlParser {
 
   protected function parseHAML(){
     // parse optional !!! doctype
-    if ($this->p2($r, 'pReg', '!!![\s]*([^\n]+)')){
+    if ($this->p2($r, 'pReg', '!!![\s]*([^\n]*)\n')){
       $this->doctype = $r['r'];
     }else
       $this->doctype = null;
@@ -750,8 +749,6 @@ class HamlTree extends HamlParser {
   protected function pPHPAssignment(){
     return $this->p(array('pSequence'
         , '
-        var_dump("X");
-        var_dump($R);
         $R = array( "phpecho" => $R[1],
                     "escape_html" => ($this->options["escape_html"] && $R[0] != "!=")
                                     || ($R[0] == "&=")
@@ -886,7 +883,7 @@ class HamlTree extends HamlParser {
     $o = $this->o;
     # optional tag name defaulting to div (eg #table)
     $tag = array('type' => 'tag', 'classes' => array(), 'ind' => $ind_str);
-    if ($this->reg('%([^\s.#\n({]+)',$m)){
+    if ($this->reg('%([^!\s.=#\n({]+)',$m)){
       $tag['name'] = $m[1];
     } else $tag['name'] = 'div';
 
@@ -899,7 +896,6 @@ class HamlTree extends HamlParser {
         // classes are all stored and will be separated by spaces
         $tag['classes'][] = $m[2];
       }else {
-        var_dump($m);
         throw new Exception('unexpected');
       }
     }
@@ -921,23 +917,23 @@ class HamlTree extends HamlParser {
       $tag['attrs'][] = $this->pError('error parsing attrs',$attrParsers[$m[1]]);
     }
 
-    // similar code in pPHP
-    if ($this->p2($r, 'pPHPAssignment')){
-      return $r;
-    } elseif ($this->p2($r, 'pApply', '', $this->pTextContentLine)){
-      $tag['childs'] = array(array('type' => 'text', 'items' => $r['r']));
-    } else {
-      if (!$this->p2($r, 'pStr', "\n")){
-        $this->o = $o; return $r;
-      }
-
-      // try parsing nested children
-      if ($this->p2($r, 'pChilds', $expectedIndent +1, $ind_str.$this->ind))
-        $tag['childs'] = $r['r'];
-      else 
-        $tag['childs'] = array();
-    }
+    $endl = array('pReg',"[\\s]*\n");
+    if ($this->p2($r, 'pChoice'
+      // &= != =
+      , array('pApply','$R = array($R);', array('pPHPAssignment'))
+      // childs
+      , array('pSequence',1,$endl, array('pChilds', $expectedIndent +1, $ind_str.$this->ind))
+      // html text
+      , array('pApply','
+      $R=array(array("type" => "text", "items" => $R));
+    ', $this->pTextContentLine)
+    )){
+    $tag['childs'] = $r['r'];
     return $this->pOk($tag);
+  } else {
+    $this->o = $o;
+    return $r;
+  }
   }
 
   protected function pAttrs($type){
@@ -969,7 +965,7 @@ class HamlTree extends HamlParser {
 
   protected function pAttr($type){
     $nameByType = array(
-      'html' => array('pApply', '$R = HamlTree::toNameItem($R);', array('pReg','[\s]*([\w]+)')),
+      'html' => array('pApply', '$R = HamlTree::toNameItem($R);', array('pReg','[\s]*([^=\n]+)')),
       'ruby' => array('pChoice'
                       ,array('pApply', '$R = HamlTree::toNameItem($R);', array('pReg','[\s]*\:([\w]+)'))
                       ,array('pAttrValueQuot')
@@ -1004,7 +1000,7 @@ class HamlTree extends HamlParser {
 
       $r = $this->pChoice(
           array('pApply', '$R = array($R);', $pAttrValue)
-        , array('pSequencea'
+        , array('pSequence'
                 , 1
                 , array('pReg','\[[\s]*')
                 , array('pSepBy'

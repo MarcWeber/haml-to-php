@@ -230,3 +230,9 @@ Most of the related work has been found using wikipedias haml page
         haml: %input(checked=true)
         expected: : <input checked>
              got: : <input>  (checked=true)</input>
+
+strange cases:
+==============
+  What happens to the ! ?
+  .class!a= 7
+  <div class='class'>a= 7</div>

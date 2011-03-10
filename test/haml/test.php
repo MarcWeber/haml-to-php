@@ -21,12 +21,12 @@ function strip($s)
 }
 
 $ok = 0;
-$max_failures = 3;
+$max_failures = 1;
 
 Haml::hamlInternalTest();
 
-# $only = 65;
-$skip = array(58 );
+# $only = 22;
+$skip = array(58);
 
 foreach (array(
       dirname(__FILE__).'/ruby-haml-3.0.24-tests.json',
