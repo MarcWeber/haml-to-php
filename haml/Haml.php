@@ -739,8 +739,8 @@ class HamlTree extends HamlParser {
               , array('pFilter', $expected_ind, $ind_str)             # :
               , array('pPHP', $expected_ind, $ind_str)
               , array('pTag', $expected_ind, $ind_str)
-              , array('pText', $expected_ind, $ind_str)
               , array('pBlock', $expected_ind, $ind_str)
+              , array('pText', $expected_ind, $ind_str)
           )
     );
   }
@@ -1110,7 +1110,7 @@ class Haml {
       if (isset($l['phpecho'])){
         $code .= "\$html .= ".$l['phpecho'].";\n";
       } elseif (isset($l['php'])){
-        $code .= "\$html .= ".$l['php'].";\n";
+        $code .= $l['php'].";\n";
       } elseif (isset($l['text'])) {
         $code .= '$html .= '.var_export($l['text'],true).";\n";
       } elseif (isset($l['verbatim'])){
@@ -1136,7 +1136,7 @@ class Haml {
     // this can be optimized probably
     foreach ($list as $l) {
       if (isset($l['phpecho'])){
-        $code .= '<?php echo '.$l['phpecho'].")?>";
+        $code .= '<?php='.$l['phpecho'].")?>";
       } elseif (isset($l['php'])){
         $code .= '<?php '.$l['php']."?>";
       } elseif (isset($l['text'])) {
