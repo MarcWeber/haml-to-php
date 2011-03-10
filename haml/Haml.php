@@ -883,7 +883,7 @@ class HamlTree extends HamlParser {
     $o = $this->o;
     # optional tag name defaulting to div (eg #table)
     $tag = array('type' => 'tag', 'classes' => array(), 'ind' => $ind_str);
-    if ($this->reg('%([^!\s.=#\n({]+)',$m)){
+    if ($this->reg('%([^!&\s.=#\n({]+)',$m)){
       $tag['name'] = $m[1];
     } else $tag['name'] = 'div';
 
