@@ -19,6 +19,11 @@ Status:
 
 BUGS:
 =====
+
+  DOCTYPE NOT IMPLEMENTED YET (should be trivial though
+
+  {foo => true} is rendered as foo=1 in XHTML mode
+
   Make test 58 work
   expected: hello&#x000A;<p></p>
   got: hello<p></p>
@@ -40,12 +45,9 @@ BUGS:
         ..
 
   without causing syntax errors.
-  
 
   Probably parsing is slow. I agree. But at it works at least :)
   See related work about alternatives
-
-  #{} only works it attr values or attr names.
 
   Multiline strings not yet supported. Can we do better?
 
@@ -60,8 +62,6 @@ BUGS:
   If you find bugs use the gituhub's bugs create a test case and send a patch,
   please.
 
-  #{} is not honored in text blocks (See TODO)
-
   #id()() and #id{}{} is allowed (won't fix)
 
   #A{:id => "B"}(id="C") yields <div id="A_B_C"> instead of <div id="A_C_B"> (fix only if some is hurt by it)
@@ -74,14 +74,11 @@ BUGS:
   ruby haml: <div class='in2ner2' id='A_C_B'></div>
   So the second class is dropped?
 
-  filters are still missing
-
   If Ruby native arrays are support this library should support php native
-  arrays. Maybe you're right. Parsing is more complicated then. This is no
-  priority for me.
+  arrays. Can be implemented easily
 
   no caching provided yet. a simple file caching (using locking) should be
-  implemented
+  distributed..
 
   This is valid ruby-haml but not documented:
   #A{:id = ["a" "b"]}
@@ -127,10 +124,8 @@ TODO test quoting in all cases:
   implement doctypes
   #{} in text blocks
 
-  use namespace!
+  use namespace !?
   
-  #{} in filters
-
   test cases for - foreach(..) blocks and if .. else
 
 Why do I use HAML:
