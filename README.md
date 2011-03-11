@@ -94,6 +94,14 @@ BUGS:
 
 Usage:
 ======
+  See test/haml/test.php ways 1-3.
+  Way 3 should be fastest because the func rendering does not yet fuse output.
+  Eg an attr is rendered as
+    $html .= '<div'; 
+    $html .= ' "'; 
+    $html .= "attrname";
+    $html .= '"';
+
   $haml = "%div = $key"
   eval(Haml::hamlToPHPStr($haml, "func_name"));
   echo func_name(array('key'=> "value"));

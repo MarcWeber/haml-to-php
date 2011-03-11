@@ -58,18 +58,35 @@ foreach (array(
 
         $f = "test$nr";
         if (isset($only));
-        echo "haml:\n$haml\n";
         $opts = array('filename' => $name);
-        $hamlTree = new HamlTree($haml, array_merge($opts, d($test,'config',array())));
-        var_export($hamlTree->childs);
-        $php = Haml::treeToPHP($hamlTree, $f);
+        $locals = d($test,'locals',array());
 
-        // $php = Haml::hamlToPHPStr($haml, d($test,'config',array()), $f); 
-        echo "start\n";
-        echo $php;
-        echo "end\n";
-        eval($php);
-        $rendered = $f(d($test,'locals',array()));
+        $way = 3;
+        switch($way) {
+          case 1:
+            // each step manually
+            $hamlTree = new HamlTree($haml, array_merge($opts, d($test,'config',array())));
+            // var_export($hamlTree->childs);
+            $php_function = Haml::treeToPHP($hamlTree, $f);
+            eval($php_function); // create function
+            $rendered = $f($locals);
+            break;
+          case 2:
+            // generate php function:
+            $php_function = Haml::hamlToPHPStr($haml, d($test,'config',array()), $f); 
+            eval($php_function); // create function
+            $rendered = $f($locals);
+            break;
+          case 3:
+            // generate code to be required or evaled:
+            $php = Haml::hamlToPHPStr($haml, d($test,'config',array())); 
+            $php_file = dirname(__FILE__).'/tmp/tmp.php';
+            file_put_contents($php_file, $php);
+            $rendered = Haml::renderTemplate($php_file, $locals);
+            break;
+          default:
+        }
+
 
 /*
       } catch (Exception $e){

@@ -1136,13 +1136,13 @@ class Haml {
     // this can be optimized probably
     foreach ($list as $l) {
       if (isset($l['phpecho'])){
-        $code .= '<?php='.$l['phpecho'].")?>";
+        $code .= '<?php echo '.$l['phpecho']."?>";
       } elseif (isset($l['php'])){
         $code .= '<?php '.$l['php']."?>";
       } elseif (isset($l['text'])) {
-        $code .= var_export($l['text'],true)."\n";
+        $code .= $l['text'];
       } elseif (isset($l['verbatim'])){
-        $code .= var_export($l['text'],true)."\n";
+        $code .= $l['text'];
       } else assert(false);
     }
     return $code;
@@ -1173,12 +1173,27 @@ class Haml {
     return self::treeToPHP(new HamlTree($str, $options), $func_name);
   }
 
+  static public function renderTemplate($file /*, .. */){
+    // using these function to render the template allows
+    // putting array keys in local scope using extract
+    $args = func_get_args();
+    foreach (array_slice($args,1) as $ar) {
+      extract($ar);
+    }
+    ob_start();
+    ob_implicit_flush(false);
+    require "$file";
+    // return echoed result:
+    return ob_get_clean();
+  }
+
   // minimal test of the parser
   static public function hamlInternalTest(){
     $p = new HamlTree("", array(), false);
     $p->selfTest();
   }
 
+  // used by the generated code removes class duplicates
   static public function renderClassItems($items){
     $no_dups = array_unique($items);
     sort($no_dups);
