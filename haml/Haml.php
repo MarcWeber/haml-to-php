@@ -1104,28 +1104,23 @@ class Haml {
 
   static public function funcRenderer($list, $func_name){
 
-    $code = '';
-    // this can be optimized probably
-    foreach ($list as $l) {
-      if (isset($l['phpecho'])){
-        $code .= "\$html .= ".$l['phpecho'].";\n";
-      } elseif (isset($l['php'])){
-        $code .= $l['php'].";\n";
-      } elseif (isset($l['text'])) {
-        $code .= '$html .= '.var_export($l['text'],true).";\n";
-      } elseif (isset($l['verbatim'])){
-        $code .= '$html .= '.var_export($l['text'],true).";\n";
-      } else assert(false);
-    }
+    $code = self::phpRenderer($list);
 
     return "
       function $func_name(){
+        ob_start();
+        ob_implicit_flush(false);
+        try{
         \$args = func_get_args();
-        // put vars in scope:
+        /* put vars in scope:*/
         foreach (\$args as \$arr) { extract(\$arr); }
-        \$html = '';
+        ?>
         $code
-        return \$html;
+        <?php
+        return ob_get_clean();
+        }catch(Exception \$e){
+          ob_end_clean();
+        }
       }
     ";
   }
