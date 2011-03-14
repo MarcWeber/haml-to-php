@@ -24,7 +24,7 @@ BUGS:
 
   {foo => true} is rendered as foo=1 in XHTML mode
 
-  Make test 58 work
+  Make skipped tests work eg:
   expected: hello&#x000A;<p></p>
   got: hello<p></p>
 

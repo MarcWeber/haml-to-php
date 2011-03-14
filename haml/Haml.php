@@ -68,16 +68,18 @@ class HamlParser {
   public $s; // the haml file contents as string
   public $o; // file offset
 
-  // returns array($line, $col)
-  public function pos(){
-    $lines = explode("\n",substr($this->s, $this->o));
+  // returns array($line, $col, $chars_after)
+  public function pos($o = null){
+    if (is_null($o)) $o = $this->o;
+    $lines = explode("\n",substr($this->s, $o));
     $len = count($lines);
-    return array($len, strlen($lines[$len-1]));
+    return array($len, strlen($lines[$len-1]), substr($this->s, $o, 50));
   }
 
   protected function error($msg){
-    list($l,$c) = $this->pos();
-    throw new HamlParseException($this->options['filename'].":$l:$c: error parsing haml: $msg");
+    if (is_string($msg))
+      $msg = array('o' => $this->o, 'msg' => $msg);
+    throw new HamlParseException($this->formatErr($msg));
   }
 
   // increases offset on if str matches at offset
@@ -98,6 +100,28 @@ class HamlParser {
     return false;
   }
 
+  protected function formatErr($x, $ind = '', $ind2 = '', $prefix = "\n"){
+    var_dump($x);
+    // ind2: first line
+    // ind:  remaining lines
+    if (is_array($x)){
+      if (isset($x['err']))
+        return $prefix.$this->formatErr($x['err'], $ind, $ind2, '');
+      elseif (isset($x['msg'])){
+        list($l,$c, $follow) = $this->pos($x['o']);
+        return $prefix.$ind2."$l:$c: ".$x['msg']."\n".$ind."following chars: ".$follow;
+      }elseif (isset($x['choice'])){
+        $r = array();
+        foreach ($x['choice'] as $e) { $r[] = $this->formatErr($e, $ind . '  ', $ind. ' *', ''); }
+        return $prefix.implode("\n", $r);
+      }
+    } elseif(is_string($x)) {
+      return $x;
+    } else {
+      assert(false);
+    }
+  }
+
   // combinators {{{2
   // a parser is a method name and a list of arguments
   // eg array('sequence'[, .. the args]);
@@ -105,7 +129,10 @@ class HamlParser {
 
   // create bad result
   protected function pFail($msg){
-    return array('msg' => $msg, 'o' => $this->o);
+    if (is_string($msg))
+      return array('msg' => $msg, 'o' => $this->o);
+    else
+      return $msg;
   }
 
   // cerate ok result
@@ -145,7 +172,7 @@ class HamlParser {
     $r = $this->p($p);
     if ($this->rOk($r))
       return $r['r'];
-    else $this->pFail($msg);
+    else throw new HamlParseException($msg."\n".$this->formatErr($r));
   }
 
   // first arg map, following args parsers
@@ -185,7 +212,7 @@ class HamlParser {
         $bad[] = $r;
       }
     }
-    return $this->pFail($bad);
+    return array('choice' => $bad);
   }
 
   protected function pStr($s){
@@ -264,7 +291,7 @@ class HamlParser {
             return $i;
         }
       }
-    }
+    } else return $i;
   }
 
   public function selfTest(){
@@ -977,7 +1004,7 @@ class HamlTree extends HamlParser {
     );
     $r = $this->p($nameByType[$type]);
     if (!$this->rOk($r))
-      $this->error($r['msg']);
+      return $r;
     $name = serialize($r['r']); // serialize info as string
     $this->pError('= or => expected depending on attr type', $sepByType[$type]);
     return $this->pOk(array($name => $this->pError('value maybe list', array('pAttrValue', $type, $name))));
@@ -1071,12 +1098,12 @@ class HamlTree extends HamlParser {
       
       // keys are documentation only
       $items = array(
-        '" str' => '("[^"\\\\]+|\\\\.)*"',
-        "' str" => '(\'[^\'\\\\]+|\\\\.)*\'',
+        '" str' => '"([^"\\\\]+|[\\\\].)*"',
+        "' str" => '\'([^\'\\\\]+|[\\\\].)*\'',
         ', separated func args' =>  '\(((?R)(,(?R))*)\)',
         'recursion in ()' => '\((?R)\)', // this catches nested ( 2 + (4 + ) ) ..
         // '{(?R)}
-        ' anything else but terminal' => "[^(){},\n$s]+"
+        ' anything else but terminal' => "[^'\"(){},\n$s]+"
       );
       $regex ='('. implode('|',$items).')+';
     }
@@ -1126,6 +1153,17 @@ class Haml {
   }
 
   static public function phpRenderer($list){
+    // fuse if {.. } else { .. }
+    for ($i = count($list); $i > 1; $i--) {
+      if ( isset($list[$i]['php'])
+        && $list[$i]['php'] === " else{"
+        && isset($list[$i-1]['php'])
+      ){
+        $list[$i-1]['php'] .= ' else{';
+        unset($list[$i]);
+      }
+    }
+
     // its your task to put stuff in scope before evaluating this code..
     $code = '';
     // this can be optimized probably
@@ -1168,7 +1206,7 @@ class Haml {
     return self::treeToPHP(new HamlTree($str, $options), $func_name);
   }
 
-  static public function renderTemplate($file /*, .. */){
+  static public function runTemplate($file /*, .. */){
     // using these function to render the template allows
     // putting array keys in local scope using extract
     $args = func_get_args();
@@ -1190,6 +1228,8 @@ class Haml {
 
   // used by the generated code removes class duplicates
   static public function renderClassItems($items){
+    // split "foo bar" into "foo", "bar" items
+    $items = HamlTree::array_merge(array_map(create_function('$a','return preg_split("/[ \t]+/",$a);'), $items));
     $no_dups = array_unique($items);
     sort($no_dups);
     return implode(' ',$no_dups);
