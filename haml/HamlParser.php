@@ -97,7 +97,7 @@ class HamlParser {
 
   // is result ok?
   protected function rOk($r){
-    return isset($r['r']);
+    return is_array($r) && array_key_exists('r',$r);
   }
 
   //
@@ -807,10 +807,16 @@ class HamlTree extends HamlParser {
                     , array('pStringNoInterpolation', $stopAt)));
   }
 
-  protected function textLine($ind_str){
+
+  protected function pPercentOk($percent_ok){
+    if (!$percent_ok && !$this->eof() && strpos("%=!/-", $this->s[$this->o]) !== false)
+      return $this->pFail('unexpected %=!/-');
+    return $this->pOk(null);
+  }
+  protected function textLine($ind_str, $percent_ok = false){
     return array('pChoice'
         , $this->pEmptyLine
-        , array('pSequence', 1, array('pStr', $ind_str), $this->pTextContentLine));
+        , array('pSequence', 2, array('pStr', $ind_str), array('pPercentOk',$percent_ok), $this->pTextContentLine), array('pStr',"\n"));
   }
 
   protected function pFilter($expectedIndent, $ind_str){
@@ -819,7 +825,7 @@ class HamlTree extends HamlParser {
                  // name
                  , array('pReg',$ind_str.':([^\n\s]+)\n') /* name */
                  // text
-                 , array('pMany', '$R = HamlTree::array_merge($R);', $this->textLine($ind_str.$this->ind))
+                 , array('pMany', '$R = HamlTree::array_merge($R);', $this->textLine($ind_str.$this->ind, true))
       );
   }
 
@@ -842,7 +848,7 @@ class HamlTree extends HamlParser {
               , 1
               , array('pReg', $ind_str.'\/[\s]*'."\n")
               , array('pMany', '$R = HamlTree::array_merge($R);'
-                      , $this->textLine($ind_str.$this->ind)))
+                      , $this->textLine($ind_str.$this->ind, true)))
        ));
   }
 
@@ -1083,7 +1089,7 @@ class HamlTree extends HamlParser {
   protected function pText($expectedIndent, $ind_str){
     return $this->pMany1(
       '$R = array("type" => "text", "items" => HamlTree::array_merge($R));'
-      , $this->textLine($ind_str));
+      , $this->textLine($ind_str, false));
   }
 
   // }}}

@@ -1,0 +1,16 @@
+!!!
+%head
+  %title= $title
+%body
+  %h1=$title
+  %div
+    %form(action="./" method="post")
+      You've pressed #{$_POST['run']} times on the submit button.
+      - if ($_POST['run'] != 0)
+        The text you've submitted the last time is:
+        %pre=$_POST['yourtext']
+      %br
+      Whatever you enter here will be used as new default.
+      %textarea(name="yourtext")!=$_POST['yourtext']
+      %input(type="hidden" name="run" value=$_POST['run']+1)
+      %input(type="submit" value="submit")

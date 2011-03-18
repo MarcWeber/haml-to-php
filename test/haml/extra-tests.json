@@ -40,6 +40,10 @@
     "one should be shown once only": {
       "haml" : "%div{:class => \"one two three\"}{:class => \"one two\"}",
       "html" : "<div class='one three two'></div>"
+    },
+    "this form" : {
+      "haml" : "%form(action="./" method="post")",
+      "html" : "<form action=\"./\" method=\"post\"></form>"
     }
   }
 

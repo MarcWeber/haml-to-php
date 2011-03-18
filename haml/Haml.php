@@ -57,6 +57,7 @@ class Haml {
   static public function hamlToPHPStr($str, $options = array(), $func_name = null){
     require_once dirname(__FILE__).'/HamlParser.php';
     $hamlTree = new HamlTree($str, $options);
+    // var_export($hamlTree->childs);
     return $hamlTree->toPHP($func_name);
   }
 
@@ -66,8 +67,8 @@ class Haml {
     // $file should contain the str contents of hamlToPHPStr($haml); with unset 
     // func_name
     $args = func_get_args();
-    foreach (array_slice($args,1) as $ar) {
-      extract($ar);
+    for ($i = 1; $i < count($args); $i++) {
+      extract($args[$i]);
     }
     ob_start();
     ob_implicit_flush(false);
