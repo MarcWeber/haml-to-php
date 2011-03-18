@@ -40,12 +40,6 @@ foreach (array(
   $tests = json_decode(file_get_contents($file), true);
 
   foreach ($tests as $groupheader => $group) {
-    if (in_array($groupheader,array('headers'))){
-      // TODO
-      echo "skipping $groupheader\n";
-      continue;
-    }
-
     echo "===> $groupheader\n";
     foreach ($group as $name => $test) {
       $nr ++;

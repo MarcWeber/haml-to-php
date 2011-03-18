@@ -358,7 +358,7 @@ class HamlTree extends HamlParser {
   public $last_ind = 0; // indentation last line
   public $name; // name of source
 
-  public $doctype;
+  public $doctype = null;
   public $tree = null;
   public $list = array(); // filled by step 3)
   public $options;
@@ -504,7 +504,11 @@ class HamlTree extends HamlParser {
   protected function rText($s, $quoted){
     if ($quoted)
       $s = htmlentities($s, ENT_QUOTES, $this->options['encoding']);
-    $this->list[] = array('text' => $s);
+    if (strpos($s, '<?') === false)
+      $this->list[] = array('text' => $s);
+    else
+      // <? breaks PHP so quote it by <? echo "... 
+      $this->rEchoPHP(var_export($s,true), false);
   }
 
   protected function rEchoPHP($php, $quoted){
@@ -522,51 +526,54 @@ class HamlTree extends HamlParser {
   // preparing rendering {{{2
   // Also see treeToPHP
 
-  function doctype(){/*{{{*/
-    // TODO
-    return '';
-    /* TODO convert this ruby code somehow and find out how it is calledin Ruby HAML
-      $text = strtolower(substr($doctype,3,strlen($doctype)-1));
-      if text.index("xml") == 0
-        return '';
-        return nil if html?
-        wrapper = @options[:attr_wrapper]
-        return "<?xml version=#{wrapper}1.0#{wrapper} encoding=#{wrapper}#{text.split(' ')[1] || "utf-8"}#{wrapper} ?>"
-      end
-
-      if html5?
-        '<!DOCTYPE html>'
-      else
-        version, type = text.scan(DOCTYPE_REGEX)[0]
-
-        if xhtml?
-          if version == "1.1"
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
-          elsif version == "5"
-            '<!DOCTYPE html>'
-          else
-            case type
-            when "strict";   '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'
-            when "frameset"; '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">'
-            when "mobile";   '<!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.2//EN" "http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">'
-            when "rdfa";     '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML+RDFa 1.0//EN" "http://www.w3.org/MarkUp/DTD/xhtml-rdfa-1.dtd">'
-            when "basic";    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.1//EN" "http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd">'
-            else             '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
-            end
-          end
-
-        elsif html4?
-          case type
-          when "strict";   '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">'
-          when "frameset"; '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN" "http://www.w3.org/TR/html4/frameset.dtd">'
-          else             '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">'
-          end
-        end
-      end
-     */
-  }/*}}}*/
+  public function isHtml(){
+    return substr($this->options['format'], 0, 4) == 'html';
+  }
 
   public function flatten(){
+    if (!is_null($this->doctype)){
+      switch($this->doctype) {
+        case 'XML':
+          if (!$this->isHtml())
+            $header = "<?xmlversion='1.0'encoding='utf-8'?>";
+          break;
+        case '':
+          if (strtolower($this->options['format']) == 'html4')
+              $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">';
+          else
+            $header = 
+              $this->isHtml()
+              ? '<!DOCTYPE html>'
+              : '<!DOCTYPEhtmlPUBLIC"-//W3C//DTDXHTML1.0Transitional//EN""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">';
+          break;
+        case '1.1':
+          $header = '<!DOCTYPEhtmlPUBLIC"-//W3C//DTDXHTML1.1//EN""http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">';
+          break;
+        case 'basic':
+          $header = '<!DOCTYPEhtmlPUBLIC"-//W3C//DTDXHTMLBasic1.1//EN""http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd">';
+          break;
+        case 'mobile':
+          $header = '<!DOCTYPEhtmlPUBLIC"-//WAPFORUM//DTDXHTMLMobile1.2//EN""http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">';
+          break;
+        case 'frameset':
+          $header = 
+            $this->isHtml()
+            ? '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN" "http://www.w3.org/TR/html4/frameset.dtd">'
+            : '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">';
+          break;
+        case 'strict':
+          $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">';
+          break;
+        case '5':
+          $header = '<!DOCTYPE html>';
+          break;
+        default:
+          throw new Exception('unimplemented doctype: '.$this->doctype);
+      }
+    }
+
+    if (isset($header))
+     $this->rText($header, false);
     $this->flattenChilds($this->childs);
   }
 
@@ -1194,7 +1201,6 @@ class Haml {
     // list of items which will make up the code. An item is one of
     // array('text' => 'HTML code')
     // array('php' => 'php code'[, 'escape_html' => true /false] )
-    $hamlTree->doctype();
     $hamlTree->flatten();
     if (is_null($func_name))
       return self::phpRenderer($hamlTree->list);
