@@ -4,7 +4,7 @@
  */
 
 require_once(dirname(__FILE__).'/../../haml/Haml.php');
-
+require_once(dirname(__FILE__).'/../../haml/HamlParser.php');
 
 $nr = 0;
 
@@ -23,7 +23,7 @@ function strip($s)
 $ok = 0;
 $max_failures = 1;
 
-Haml::hamlInternalTest();
+HamlTree::hamlInternalTest();
 
 # $only = 4;
 $skip = array(
@@ -65,7 +65,7 @@ foreach (array(
             // each step manually
             $hamlTree = new HamlTree($haml, array_merge($opts, d($test,'config',array())));
             # var_export($hamlTree->childs);
-            $php_function = Haml::treeToPHP($hamlTree, $f);
+            $php_function = $hamlTree->toPHP($f);
             # echo "$php_function\n";
             eval($php_function); // create function
             $rendered = $f($locals);
