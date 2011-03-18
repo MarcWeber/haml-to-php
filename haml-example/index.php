@@ -26,6 +26,8 @@ $_POST = array_merge(
   $_POST
 );
 
+@ini_set('xdebug.max_nesting_level','600');
+
 $g = array('title' => "You're welcome to modify this HAML sample and play with it");
 
 echo haml('main.haml', $g);
