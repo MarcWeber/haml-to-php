@@ -6,19 +6,6 @@
  *
  * parsing is done by class HamlTree
  * user interface class Haml
- *
- * high level overview:
- * 1) HAML is parsed to a tree (represented as arrays). instantiating HamlTree does this
- * 2) tree is converted to items: (funcs: flatten*)
- *   - text (always quoted)
- *   - verbatim (never quoted)
- *   - php (add php. used by blocks)
- *   - phpecho (echo php result)
- * 3) create PHP code out of items (func toPHP)
- *   two options:
- *    - code which can be required
- *    - code which defines a function you can call
- * 1),2),3) are all called for you by hamlToPHPStr
  */
 
 class HamlParseException extends Exception {}
