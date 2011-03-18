@@ -3,6 +3,7 @@
   %title= $title
 %body
   %h1=$title
+  %h2 sample 1: a form
   %div
     %form(action="./" method="post")
       You've pressed #{$_POST['run']} times on the submit button.
@@ -11,6 +12,13 @@
         %pre=$_POST['yourtext']
       %br
       Whatever you enter here will be used as new default.
+      %br
       %textarea(name="yourtext")!=$_POST['yourtext']
       %input(type="hidden" name="run" value=$_POST['run']+1)
+      %br
       %input(type="submit" value="submit")
+
+  %h2 sample 2: a simple foreach loop using constant values
+  %ul
+    - foreach(array(1,2,3) as $a)
+      %li= $a
