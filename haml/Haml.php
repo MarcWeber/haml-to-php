@@ -87,7 +87,7 @@ class Haml {
   static public function renderClassItems($items){
     // split "foo bar" into "foo", "bar" items
     $no_dups = array();
-    foreach ($items as $i) {
+    foreach ($items as $a) {
       foreach (preg_split("/[ \t]+/",$a) as $value) {
         $no_dups[$value]=1;
       }

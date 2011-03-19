@@ -559,6 +559,8 @@ class HamlTree extends HamlParser {
     $q = $this->options['attr_wrapper'];
     if (isset($thing['type'])){
       switch ($thing['type']) {
+        case 'nop':
+          break;
         case 'text':
           $this->rItems($thing['items'], true);
           break;
@@ -724,6 +726,7 @@ class HamlTree extends HamlParser {
     return $this->pMany(
         null
       , array('pChoice'
+              , array('pApply', '$R = array("type" => "nop");', array('pReg','[ \t]*\n')) # /[IE] ..
               , array('pConditionalComment', $expected_ind, $ind_str) # /[IE] ..
               , array('pInlineComment', $expected_ind, $ind_str)      # /
               , array('pSilentComment', $expected_ind, $ind_str)      # -#
