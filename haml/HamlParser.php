@@ -501,16 +501,16 @@ class HamlTree extends HamlParser {
             $header = 
               $this->isHtml()
               ? '<!DOCTYPE html>'
-              : '<!DOCTYPEhtmlPUBLIC"-//W3C//DTDXHTML1.0Transitional//EN""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">';
+              : '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">';
           break;
         case '1.1':
-          $header = '<!DOCTYPEhtmlPUBLIC"-//W3C//DTDXHTML1.1//EN""http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">';
+          $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">';
           break;
         case 'basic':
-          $header = '<!DOCTYPEhtmlPUBLIC"-//W3C//DTDXHTMLBasic1.1//EN""http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd">';
+          $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.1//EN" "http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd>';
           break;
         case 'mobile':
-          $header = '<!DOCTYPEhtmlPUBLIC"-//WAPFORUM//DTDXHTMLMobile1.2//EN""http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">';
+          $header = '<!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.2//EN" "http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">';
           break;
         case 'frameset':
           $header = 
@@ -860,7 +860,7 @@ class HamlTree extends HamlParser {
       '$R = array("type" => "silent-comment");'
       , array('pSequence'
         , null
-        , array('pReg', $ind_str.'-#[^\n]*\n')
+        , array('pReg', '\s*-#[^\n]*\n')
         , array('pMany', null, array('pReg',$ind_str.$this->ind.'[^\n]*\n'))
       ));
   }
