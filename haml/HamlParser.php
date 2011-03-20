@@ -860,8 +860,12 @@ class HamlTree extends HamlParser {
       '$R = array("type" => "silent-comment");'
       , array('pSequence'
         , null
-        , array('pReg', '\s*-#[^\n]*\n')
-        , array('pMany', null, array('pReg',$ind_str.$this->ind.'[^\n]*\n'))
+        , array('pReg', $ind_str.'-#[^\n]*\n')
+        , array('pMany', null,
+          array('pChoice', array('pReg',$ind_str.$this->ind.'[^\n]*\n')
+                         , array('pReg','[\s]*\n')
+              )
+        )
       ));
   }
 
