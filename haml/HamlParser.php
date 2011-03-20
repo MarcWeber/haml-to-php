@@ -26,7 +26,7 @@ class HamlParser {
   // returns array($line, $col, $chars_after)
   public function pos($o = null){
     if (is_null($o)) $o = $this->o;
-    $lines = explode("\n",substr($this->s, $o));
+    $lines = explode("\n",substr($this->s,0, $o));
     $len = count($lines);
     return array($len, strlen($lines[$len-1]), substr($this->s, $o, 50));
   }
@@ -56,7 +56,6 @@ class HamlParser {
   }
 
   protected function formatErr($x, $ind = '', $ind2 = '', $prefix = "\n"){
-    var_dump($x);
     // ind2: first line
     // ind:  remaining lines
     if (is_array($x)){
@@ -713,7 +712,7 @@ class HamlTree extends HamlParser {
    
     $this->childs = $this->pError('failed parsing haml', array('pChilds',0,''));
     if ($this->o < $this->len-1)
-        $this->error('parsing stopped. 10 of the first remaining chars:'.var_export(substr($this->s,$this->o,10),true));
+        $this->error('parsing stopped');
   }
 
   protected function eof(){
