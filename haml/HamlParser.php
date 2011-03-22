@@ -331,7 +331,7 @@ class HamlTree extends HamlParser {
       except there are no self-closing tags, the XML prolog is ignored and 
       correct DOCTYPEs are generated.  :escape_html
        */
-      'format' => 'xhtml', // not implemented yet
+      'format' => 'xhtml',
       /*
       Sets whether or not to escape HTML-sensitive characters in script. If 
       this is true, = behaves like &=; otherwise, it behaves like !=. Note 
@@ -339,7 +339,7 @@ class HamlTree extends HamlParser {
       rendering partials. See also Escaping HTML and Unescaping HTML Defaults 
       to false.
        */
-      'escape_html' => false, // not implemented yet
+      'escape_html' => false,
 
       /*
       If set to true, Haml makes no attempt to properly indent or format the HTML 
@@ -347,7 +347,7 @@ class HamlTree extends HamlParser {
       source unpleasant. Defaults to true in Rails production mode, and false 
       everywhere else.
        */
-      'ugly' => true, // not implemented yet
+      'ugly' => true,
 
       /* Whether or not attribute hashes and Ruby scripts designated by = or ~ should 
        * be evaluated. If this is true, said scripts are rendered as empty strings. 
@@ -600,6 +600,9 @@ class HamlTree extends HamlParser {
 
           // tag open and name
           // TODO: add indentation here for pretty rendering?
+		  if (!$this->options['ugly']){
+			$this->rText("\n".$thing['ind'], false);
+		  }
           $this->rText("<$tag_name", false);
           // attributes
           # classes are sorted. dups are removed.
@@ -674,6 +677,9 @@ class HamlTree extends HamlParser {
             foreach ($childs as $v) {
               $this->flattenThing($v);
             }
+			if (!$this->options['ugly']){
+			  $this->rText("\n".$thing['ind'], false);
+			}
             $this->rText("</$tag_name>", false);
           }
           break;
@@ -811,7 +817,7 @@ class HamlTree extends HamlParser {
 
 
   protected function pPercentOk($percent_ok){
-    if (!$percent_ok && !$this->eof() && strpos("%=!/-", $this->s[$this->o]) !== false)
+    if (!$percent_ok && !$this->eof() && strpos("%=!/-:", $this->s[$this->o]) !== false)
       return $this->pFail('unexpected %=!/-');
     return $this->pOk(null);
   }
