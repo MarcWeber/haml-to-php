@@ -558,8 +558,6 @@ class HamlTree extends HamlParser {
     $q = $this->options['attr_wrapper'];
     if (isset($thing['type'])){
       switch ($thing['type']) {
-        case 'nop':
-          break;
         case 'text':
           $this->rItems($thing['items'], true);
           break;
@@ -723,9 +721,11 @@ class HamlTree extends HamlParser {
   // if no children are found. No children are found if indentation decreases
   protected function pChilds($expected_ind, $ind_str){
     return $this->pMany(
-        null
+		'
+			$R = array_filter($R, create_function("\$x","return \$x !== \"NOP\";"));
+		'
       , array('pChoice'
-              , array('pApply', '$R = array("type" => "nop");', array('pReg','[ \t]*\n')) # /[IE] ..
+              , array('pApply', '$R = "NOP";', array('pReg','[ \t]*\n')) # /[IE] ..
               , array('pConditionalComment', $expected_ind, $ind_str) # /[IE] ..
               , array('pInlineComment', $expected_ind, $ind_str)      # /
               , array('pSilentComment', $expected_ind, $ind_str)      # -#
