@@ -129,9 +129,9 @@ class Haml {
       this is true, = behaves like &=; otherwise, it behaves like !=. Note 
       that if this is set, != should be used for yielding to subtemplates and 
       rendering partials. See also Escaping HTML and Unescaping HTML Defaults 
-      to false.
+      to true.
        */
-      'escape_html' => false,
+      'escape_html' => true,
 
       /*
       If set to true, Haml makes no attempt to properly indent or format the HTML 
