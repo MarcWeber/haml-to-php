@@ -729,7 +729,7 @@ class HamlTree extends HamlParser {
 
 
   protected function pPercentOk($percent_ok){
-    if (!$percent_ok && !$this->eof() && strpos("%=!/-:", $this->s[$this->o]) !== false)
+    if (!$percent_ok && !$this->eof() && strpos("%=!/-: \t", $this->s[$this->o]) !== false)
       return $this->pFail('unexpected %=!/-');
     return $this->pOk(null);
   }
