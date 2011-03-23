@@ -514,9 +514,17 @@
 
   "Boolean attributes" : {
 
-    "boolean attribute with XHTML" : {
+    "boolean attribute with XHTML true" : {
       "haml" : "%input(checked=true)",
       "html" : "<input checked='checked' />",
+      "config" : {
+        "format" : "xhtml"
+      }
+    },
+
+    "boolean attribute with XHTML false" : {
+      "haml" : "%input(checked=false)",
+      "html" : "<input />",
       "config" : {
         "format" : "xhtml"
       }

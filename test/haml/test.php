@@ -24,11 +24,9 @@ $max_failures = 1;
 
 HamlTree::hamlInternalTest();
 
-# $only = 4;
+# $only = 81;
 $skip = array(
   "content in a 'preserve' filter",
-  "boolean attribute with XHTML",
-  "boolean attribute with HTML"
 );
 
 foreach (array(
@@ -58,14 +56,14 @@ foreach (array(
         $opts = array('filename' => $name);
         $locals = d($test,'locals',array());
 
-        $way = 2;
+        $way = 1;
         $haml = new Haml();
         $haml->options = array_merge($haml->options, d($test,'config',array()));
 
         switch($way) {
           case 1:
             // generate php function:
-            $php_function = $haml->hamlToPHP($haml, $test,$f); 
+            $php_function = $haml->hamlToPHP($haml_str, $test,$f); 
             eval($php_function); // create function
             $rendered = $f($locals);
             break;

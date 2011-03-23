@@ -573,10 +573,36 @@ class HamlTree extends HamlParser {
           // render remaining attrs
           foreach ($attrs as $key => $v) {
             $this->rText(" ",false);
-            $this->rItems(unserialize($key), false);
-            $this->rText("=$q", false);
-            $this->rItems($v, true);
-            $this->rText("$q", false);
+            $key_a = unserialize($key);
+            $end=$q;
+
+            // TODO if phpvalue is an expression a function must be called!
+            // same appliet to key_a
+            if (
+              (count($v) == 1 && isset($v[0]['phpvalue']) && is_bool($v[0]['phpvalue']))
+              && ( count($key_a) == 1 && isset($key_a[0]['text']) )
+            ){
+              if ($v[0]['phpvalue']){
+                // true is rendered as name='name'
+                if ($html){
+                  $this->rItems($key_a, false);
+                  // only name without = is rendered. So nothing to be done
+                  $end="";
+                } else {
+                  $this->rItems($key_a, false);
+                  $this->rText("=$q", false);
+                  $this->rItems(array(array('phpvalue' => var_export($key_a[0]['text'],true))), true);
+                }
+              } else {
+                 // false is not rendered
+                $end="";
+              }
+            } else {
+              $this->rItems($key_a, false);
+              $this->rText("=$q", false);
+              $this->rItems($v, true);
+            }
+            $this->rText($end, false);
           }
 
           if ($autoclose){
@@ -913,7 +939,11 @@ class HamlTree extends HamlParser {
     # parse php code or "..#{}.."
     $pAttrValue = array('pChoice'
      , array('pAttrValueQuot')
-     , array('pApply','$R =  array(array("phpvalue" => $R));',array('pArbitraryPHPCode'))
+     , array('pApply','
+         if ($R === "true") $R = true;
+         if ($R === "false") $R = false;
+         $R =  array(array("phpvalue" => $R));
+    ',array('pArbitraryPHPCode'))
      );
 
     if (in_array($name, array($this->idItem,$this->classItem))){
