@@ -57,9 +57,10 @@ class HamlUtilities {
   static public function renderClassItems($items){
     // split "foo bar" into "foo", "bar" items
     $no_dups = array();
+    $nr=0;
     foreach ($items as $a) {
       foreach (preg_split("/[ \t]+/",$a) as $value) {
-        $no_dups[$value]=1;
+        $no_dups[$value]=$nr++;
       }
     }
     $no_dups = array_flip($no_dups);
@@ -204,9 +205,9 @@ class Haml {
     ); // }}}2
 
 
-	public function hamlToPHPStr($str, $filename, $func_name = null){
-		return HamlUtilities::hamlToPHPStr($str, $this->options, $filename, $func_name);
-	}
+    public function hamlToPHP($str, $filename, $func_name = null){
+      return HamlUtilities::hamlToPHPStr($str, $this->options, $filename, $func_name);
+    }
 
 }
 
@@ -230,7 +231,7 @@ class HamlFileCache extends Haml {
 		  || (
 			!file_exists($c)
 			|| filemtime($c) < filemtime($h))){
-			file_put_contents($c, $this->hamlToPHPStr(file_get_contents($h), $h));
+			file_put_contents($c, $this->hamlToPHP(file_get_contents($h), $h));
 	  }
 	  $args[0] = $c; // first arg is file
 	  return call_user_func_array('HamlUtilities::runTemplate', $args);

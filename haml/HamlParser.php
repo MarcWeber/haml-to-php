@@ -322,12 +322,13 @@ class HamlTree extends HamlParser {
   public $childs; // the parsed representation.
 
   function __construct($s, $options, $filename, $parse = true){
-	// replace non linux eols by \n only before processing starts
-	$s = str_replace("\r\n","\n", $s);
-	$s = str_replace("\r","\n", $s);
+    assert(is_string($s));
+    // replace non linux eols by \n only before processing starts
+    $s = str_replace("\r\n","\n", $s);
+    $s = str_replace("\r","\n", $s);
     // {{{2
-	$this->options =& $options;
-	$this->filename = $filename;
+    $this->options =& $options;
+    $this->filename = $filename;
 
     $this->idItem = serialize(self::toNameItem('id'));
     $this->classItem = serialize(self::toNameItem('class'));
@@ -414,7 +415,7 @@ class HamlTree extends HamlParser {
           $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">';
           break;
         case 'basic':
-          $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.1//EN" "http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd>';
+          $header = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.1//EN" "http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd">';
           break;
         case 'mobile':
           $header = '<!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.2//EN" "http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">';
@@ -1088,7 +1089,7 @@ class HamlTree extends HamlParser {
 
   // minimal test of the parser
   static public function hamlInternalTest(){
-    $p = new HamlTree("", array(), false);
+    $p = new HamlTree("", array(),"", false);
     $p->selfTest();
   }
 

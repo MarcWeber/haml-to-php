@@ -17,7 +17,6 @@ function strip($s)
   // dropping / to ignore HTML vs XHTML
   // haml is quoting attrs by, phamlp by " ?
   return str_replace("\n","",preg_replace('/[ \t]*/','',$s));
-  return $s;
 }
 
 $ok = 0;
@@ -48,7 +47,7 @@ foreach (array(
       if (isset($only) && $nr != $only)
         continue;
       
-      $haml = $test['haml'];
+      $haml_str = $test['haml'];
       $expected = $test['html'];
 
       echo "$nr: $name\n";
@@ -59,29 +58,23 @@ foreach (array(
         $opts = array('filename' => $name);
         $locals = d($test,'locals',array());
 
-        $way = 1;
+        $way = 2;
+        $haml = new Haml();
+        $haml->options = array_merge($haml->options, d($test,'config',array()));
+
         switch($way) {
           case 1:
-            // each step manually
-            $hamlTree = new HamlTree($haml, array_merge($opts, d($test,'config',array())));
-            # var_export($hamlTree->childs);
-            $php_function = $hamlTree->toPHP($f);
-            # echo "$php_function\n";
+            // generate php function:
+            $php_function = $haml->hamlToPHP($haml, $test,$f); 
             eval($php_function); // create function
             $rendered = $f($locals);
             break;
           case 2:
-            // generate php function:
-            $php_function = Haml::hamlToPHPStr($haml, d($test,'config',array()), $f); 
-            eval($php_function); // create function
-            $rendered = $f($locals);
-            break;
-          case 3:
             // generate code to be required or evaled:
-            $php = Haml::hamlToPHPStr($haml, d($test,'config',array())); 
+            $php = $haml->hamlToPHP($haml_str, $test); 
             $php_file = dirname(__FILE__).'/tmp/tmp.php';
             file_put_contents($php_file, $php);
-            $rendered = Haml::runTemplate($php_file, $locals);
+            $rendered = HamlUtilities::runTemplate($php_file, $locals);
             break;
           default:
         }
@@ -98,14 +91,14 @@ foreach (array(
 
       list($e_s, $got_s) = array_map('strip', array($expected, $rendered));
 
-      echo "haml: $haml\n";
+      echo "haml: $haml_str\n";
       if ($e_s === $got_s){
         $ok ++;
         echo "ok $nr\n";
       }else{
         echo "failed:\n";
         echo "expected: $e_s\n";
-        echo "got: $rendered\n";
+        echo "got: $got_s\n";
         var_export($test);
         $max_failures --;
         if ($max_failures == 0)
