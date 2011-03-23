@@ -1075,7 +1075,7 @@ class HamlTree extends HamlParser {
     // fuse if {.. } else { .. }
     for ($i = count($list); $i > 1; $i--) {
       if ( isset($list[$i]['php'])
-        && $list[$i]['php'] === " else{"
+        && in_array($list[$i]['php'],array("else{", " else{"),true)
         && isset($list[$i-1]['php'])
       ){
         $list[$i-1]['php'] .= ' else{';
