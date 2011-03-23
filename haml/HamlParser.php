@@ -606,6 +606,8 @@ class HamlTree extends HamlParser {
       }
     } elseif (isset($thing['phpecho'])){
       $this->rEchoPHP($thing['phpecho'], $thing['escape_html']);
+      if ($this->d($thing,'add_space', false))
+      $this->rText(' ', false);
     } elseif (isset($thing['text'])){
       $this->rText($thing['text'], true);
     } else
@@ -659,7 +661,8 @@ class HamlTree extends HamlParser {
         , '
         $R = array( "phpecho" => $R[1],
                     "escape_html" => ($this->options["escape_html"] && $R[0] != "!=")
-                                    || ($R[0] == "&=")
+                                    || ($R[0] == "&="),
+                    "add_space" => true
                   );
         '
         , array('pReg','(=|!=|[&]=)')
@@ -712,7 +715,7 @@ class HamlTree extends HamlParser {
       if (!$this->p2($r, 'pStr', '}')){
         $this->o = $o; return $r;
       }
-      return $this->pOk(array('phpvalue' => $code['r']));
+      return $this->pOk(array('phpvalue' => '('.$code['r'].')'));
     } else return $this->pFail('#{ expected');
   }
 
@@ -917,8 +920,7 @@ class HamlTree extends HamlParser {
       # may be a list.
 
       $r = $this->pChoice(
-          array('pApply', '$R = array($R);', $pAttrValue)
-        , array('pSequence'
+        array('pSequence'
                 , 1
                 , array('pReg','\[[\s]*')
                 , array('pSepBy'
@@ -926,6 +928,7 @@ class HamlTree extends HamlParser {
                   , $pAttrValue)
                 , array('pReg','[\s]*\]'),
           )
+        , array('pApply', '$R = array($R);', $pAttrValue)
       );
     
     } else {

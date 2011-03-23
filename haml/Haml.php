@@ -225,8 +225,8 @@ class HamlFileCache extends Haml {
 
   public function haml($relativeHamlFile /*, .. */){
 	  $args = func_get_args();
-	  $c = $this->cacheDir.'/'.$relativeHamlFile.'.php';
 	  $h = $this->hamlSourceDir.'/'.$relativeHamlFile;
+	  $c = $this->cacheDir.'/'.preg_replace('/[\/\\\\]/',' ',$relativeHamlFile).'.php';
 	  if ($this->forceUpdate 
 		  || (
 			!file_exists($c)
