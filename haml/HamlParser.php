@@ -63,7 +63,7 @@ class HamlParser {
         return $prefix.$this->formatErr($x['err'], $ind, $ind2, '');
       elseif (isset($x['msg'])){
         list($l,$c, $follow) = $this->pos($x['o']);
-        return $prefix.$ind2."$l:$c: ".$x['msg']."\n".$ind."following chars: ".$follow;
+        return $prefix.$ind2.$this->filename.":$l:$c: ".$x['msg']."\n".$ind."following chars: ".$follow;
       }elseif (isset($x['choice'])){
         $r = array();
         foreach ($x['choice'] as $e) { $r[] = $this->formatErr($e, $ind . '  ', $ind. ' *', ''); }
@@ -321,110 +321,18 @@ class HamlTree extends HamlParser {
 
   public $childs; // the parsed representation.
 
-  function __construct($s, $options, $parse = true){
+  function __construct($s, $options, $filename, $parse = true){
+	// replace non linux eols by \n only before processing starts
+	$s = str_replace("\r\n","\n", $s);
+	$s = str_replace("\r","\n", $s);
     // {{{2
-    $options_defaults = array(
-      /*
-      Determines the output format. Normally the default is :xhtml, although 
-      under Rails 3 it’s :html5, since that’s the Rails 3’s default format. 
-      Other options are :html4 and :html5, which are identical to :xhtml 
-      except there are no self-closing tags, the XML prolog is ignored and 
-      correct DOCTYPEs are generated.  :escape_html
-       */
-      'format' => 'xhtml',
-      /*
-      Sets whether or not to escape HTML-sensitive characters in script. If 
-      this is true, = behaves like &=; otherwise, it behaves like !=. Note 
-      that if this is set, != should be used for yielding to subtemplates and 
-      rendering partials. See also Escaping HTML and Unescaping HTML Defaults 
-      to false.
-       */
-      'escape_html' => false,
-
-      /*
-      If set to true, Haml makes no attempt to properly indent or format the HTML 
-      output. This significantly improves rendering performance but makes viewing the 
-      source unpleasant. Defaults to true in Rails production mode, and false 
-      everywhere else.
-       */
-      'ugly' => true,
-
-      /* Whether or not attribute hashes and Ruby scripts designated by = or ~ should 
-       * be evaluated. If this is true, said scripts are rendered as empty strings. 
-       * Defaults to false.
-       */
-      'suppress_eval' => false,
-
-      /* The character that should wrap element attributes. This defaults to ' (an
-      * apostrophe). Characters of this type within the attributes will be escaped 
-      * (e.g. by replacing them with &apos;) if the character is an apostrophe or a 
-      * quotation mark.
-       */
-      'attr_wrapper' => "'",
-
-      /* The name of the Haml file being parsed. This is only used as information 
-      * when exceptions are raised. This is automatically assigned when working 
-      * through ActionView, so it’s really only useful for the user to assign when 
-      * dealing with Haml programatically.
-       */
-      'filename' => '<no file>',
-
-       /* The line offset of the Haml template being parsed. This is useful for inline 
-       * templates, similar to the last argument to Kernel#eval.
-       */
-      'line' => '<no line>', // not implemented yet
-
-      /* A list of tag names that should be automatically self-closed if they have no 
-      * content. This can also contain regular expressions that match tag names (or 
-      * any object which responds to #===). Defaults to ['meta', 'img', 'link', 'br',
-      * 'hr', 'input', 'area', 'param', 'col', 'base']. // not implemented yet
-       */
-      'autoclose' => array('meta','img','link','br','hr','input','area','param','col','base'),
-
-      /* A list of tag names that should automatically have their newlines preserved 
-      * using the Haml::Helpers#preserve helper. This means that any content given on 
-      * the same line as the tag will be preserved. For example, %textarea= 
-      * "Foo\nBar" compiles to <textarea>Foo&#x000A;Bar</textarea>. Defaults to 
-      * ['textarea', 'pre']. See also Whitespace Preservation. // not implemented yet
-       */
-      'preserve' => array('textarea', 'pre'), // not implemented yet
-
-      /* The encoding to use for the HTML output. Only available in Ruby 1.9 or 
-      * higher. This can be a string or an Encoding Object. Note that Haml does not 
-      * automatically re-encode Ruby values; any strings coming from outside the 
-      * application should be converted before being passed into the Haml template. 
-      * Defaults to Encoding.default_internal; if that’s not set, defaults to the 
-      * encoding of the Haml template; if that’s us-ascii, defaults to "utf-8". 
-      * Many Ruby database drivers are not yet Ruby 1.9 compatible; in 
-      *
-      * particular, they return strings marked as ASCII-encoded even when 
-      * those strings contain non-ASCII characters (such as UTF-8). This 
-      * will cause encoding errors if the Haml encoding isn’t set to 
-      * "ascii-8bit". To solve this, either call #force_encoding on all the 
-      * strings returned from the database, set :encoding to "ascii-8bit", 
-      * or try to get the authors of the database drivers to make them Ruby 
-      * 1.9 compatible.
-       */
-      'encoding' => "utf-8", // not implemented yet
-    ); // }}}2
-
-    $options_defaults['filters'] = array(
-      'plain' => 'Filters::plain',
-      'javascript' => 'Filters::javascript',
-      'css' => 'Filters::css',
-      'cdata' => 'Filters::cdata',
-      'escaped' => 'Filters::escaped',
-      'php' => 'Filters::php',
-      'preserve' => 'Filters::preserve',
-      // ...
-    );
-
-
+	$this->options =& $options;
+	$this->filename = $filename;
 
     $this->idItem = serialize(self::toNameItem('id'));
     $this->classItem = serialize(self::toNameItem('class'));
 
-    $this->options = array_merge($options_defaults, $options);
+    $this->options = $options;
     $this->s = $s."\n"; // \n so that it gets parsed
     $this->len = strlen($this->s);
     $this->o = 0;
@@ -571,7 +479,7 @@ class HamlTree extends HamlParser {
           break;
         case 'filter':
           if (!isset($this->options['filters'][$thing['filter']]))
-            $this->error('bad filter: '.$thing['filter']); // TODO location?
+            $this->error('bad filter: '.var_export($thing['filter'],true)); // TODO location?
           $text = array();
           foreach ($thing['items'] as $i) {
             if (isset($i['phpvalue']))
@@ -646,7 +554,7 @@ class HamlTree extends HamlParser {
               }
               $items[] = implode('.',$item_builder);
             }
-            $this->rEchoPHP('Haml::renderClassItems(array('.implode(',',$items).'))', true);
+            $this->rEchoPHP('HamlUtilities::renderClassItems(array('.implode(',',$items).'))', true);
             $this->rText("$q", false);
           }
           // render id
