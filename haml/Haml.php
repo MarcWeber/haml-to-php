@@ -68,6 +68,18 @@ class HamlUtilities {
     return implode(' ',$no_dups);
   }
 
+  // if $value evaluates to false and $xhtml is set then attr=value is not 
+  // rendered at all. This function is only called for complex attribute values
+  static public function renderAttribute($attr, $value, $q, $enc, $html){
+    if ($value === false) return '';
+    if ($value === true){
+      if ($html)
+        return "$attr";
+      else
+        return "$attr=$q$attr$q ";
+    }
+    return "$attr=$q".htmlentities($value, ENT_QUOTES, $enc).$q;
+  }
 
   /* functions which could be useful to you */
   static public function hamlToPHPStr($str, $options, $filename = '', $func_name = null){

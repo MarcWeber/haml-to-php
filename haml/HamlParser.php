@@ -597,10 +597,39 @@ class HamlTree extends HamlParser {
                  // false is not rendered
                 $end="";
               }
-            } else {
+            } elseif (count($v) == 1 && isset($v[0]['text'])) {
+              // string constant, render it
               $this->rItems($key_a, false);
               $this->rText("=$q", false);
               $this->rItems($v, true);
+            } else {
+              // complex PHP expression, if it evaluates to true / false key=value must not be rendered at all
+              // thus call function
+              $attr_builder = array();
+              foreach ($key_a as $value_item) {
+                if (array_key_exists('text',$value_item)){
+                  $attr_builder[] = var_export($value_item['text'],true);
+                } elseif (array_key_exists('phpvalue', $value_item)) {
+                  $attr_builder[] = '('.$value_item['phpvalue'].')';
+                } else assert(false);
+              }
+
+              $value_builder = array();
+              foreach ($v as $value_item) {
+                if (array_key_exists('text',$value_item)) {
+                  $value_builder[] = var_export($value_item['text'],true);
+                } elseif (array_key_exists('phpvalue', $value_item)) {
+                  $value_builder[] = '('.$value_item['phpvalue'].')';
+                } else assert(false);
+              }
+
+              $this->rEchoPHP('HamlUtilities::renderAttribute('.implode('.',$attr_builder).','
+                                                               .implode('.',$value_builder).','
+                                                               .var_export($q,true).','
+                                                               .var_export($this->options['encoding'],true).','
+                                                               .var_export($html,true)
+                                                              .')', false);
+              $end="";
             }
             $this->rText($end, false);
           }
@@ -872,9 +901,11 @@ class HamlTree extends HamlParser {
       , array('pSequence',1,$endl, array('pChilds', $expectedIndent +1, $ind_str.$this->ind))
       // html text
       , array('pApply','
-      $R=array(array("type" => "text", "items" => $R));
-    ', $this->pTextContentLine)
-    )){
+            $R=array(array("type" => "text", "items" => $R));
+          ', $this->pTextContentLine
+      )
+     )
+    ){
     $tag['childs'] = $r['r'];
     return $this->pOk($tag);
   } else {
