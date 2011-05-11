@@ -1119,9 +1119,9 @@ class HamlTree extends HamlParser {
     // this can be optimized probably
     foreach ($list as $l) {
       if (isset($l['phpecho'])){
-        $code .= '<?php echo '.$l['phpecho']."?>";
+        $code .= "<?php\n echo ".$l['phpecho']."?>";
       } elseif (isset($l['php'])){
-        $code .= '<?php '.$l['php']."?>";
+        $code .= "<?php\n ".$l['php']."?>";
       } elseif (isset($l['text'])) {
         $code .= $l['text'];
       } elseif (isset($l['verbatim'])){
