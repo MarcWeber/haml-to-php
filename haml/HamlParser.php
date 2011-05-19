@@ -745,7 +745,7 @@ class HamlTree extends HamlParser {
           $s .= $c2;
           $this->o++;
         }
-      } elseif ($c == '#'){
+      } elseif ($c == '#' && $this->s[$this->o+1] == '{'){
         break;
       } else {
         $s .= $c;
