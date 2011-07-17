@@ -345,7 +345,7 @@ class HamlTree extends HamlParser {
     // any number of spaces, returns \n
     $this->pEmptyLine = array('pApply', '$R = array(array("text" => "\n"));', array('pReg','[\s]*\n'));
     // parses rest of line (after indentation) and \n
-    $this->pTextContentLine = array('pSequence', '$R = $R[0]; $R[] = array("text" => "\n");', $this->interpolatedString("\n"), array('pStr', "\n"));
+    $this->pTextContentLine = array('pSequence', '$R = $R[0];', $this->interpolatedString("\n"), array('pStr', "\n"));
 
     if ($parse)
       $this->parseHAML();
@@ -501,6 +501,7 @@ class HamlTree extends HamlParser {
           break;
         case 'tag':
           // TODO optimize
+          $this->rText("\n", false);
           $tag_name = $thing['name'];
           $autoclose = in_array($tag_name, $this->options['autoclose']);
           $childs = $this->d($thing,'childs',array());
@@ -646,6 +647,7 @@ class HamlTree extends HamlParser {
 			}
             $this->rText("</$tag_name>", false);
           }
+          $this->rText("\n", false);
           break;
         case 'block':
           $hasC = count($thing['childs']) > 0;
@@ -791,7 +793,7 @@ class HamlTree extends HamlParser {
   protected function textLine($ind_str, $percent_ok = false){
     return array('pChoice'
         , $this->pEmptyLine
-        , array('pSequence', 2, array('pStr', $ind_str), array('pPercentOk',$percent_ok), $this->pTextContentLine), array('pStr',"\n"));
+        , array('pSequence', '$R = $R[2]; $R[] = array("text" => "\n");', array('pStr', $ind_str), array('pPercentOk',$percent_ok), $this->pTextContentLine), array('pStr',"\n"));
   }
 
   protected function pFilter($expectedIndent, $ind_str){
