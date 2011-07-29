@@ -42,8 +42,15 @@
       "html" : "<div class='one three two'></div>"
     },
     "this form" : {
-      "haml" : "%form(action="./" method="post")",
-      "html" : "<form action=\"./\" method=\"post\"></form>"
+      "haml" : "%form(action=\"./\" method=\"post\")",
+      "html" : "<form action='./' method='post'></form>"
+    }
+  },
+
+  "assign to var" : {
+    "assign to var" : {
+      "haml" : "$a=%div\n  foo\n  %strong content\n!=$a",
+      "html" : "<div>foo<strong>content</strong></div>"
     }
   }
 

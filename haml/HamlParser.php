@@ -502,6 +502,10 @@ class HamlTree extends HamlParser {
         case 'tag':
           // TODO optimize
           $this->rText("\n", false);
+
+          if (isset($thing['assign_to']))
+            $this->rPHP('ob_start();', false);
+
           $tag_name = $thing['name'];
           $autoclose = in_array($tag_name, $this->options['autoclose']);
           $childs = $this->d($thing,'childs',array());
@@ -648,6 +652,10 @@ class HamlTree extends HamlParser {
             $this->rText("</$tag_name>", false);
           }
           $this->rText("\n", false);
+
+          if (isset($thing['assign_to']))
+            $this->rPHP('$'.$thing['assign_to'].'=ob_get_clean();', false);
+
           break;
         case 'block':
           $hasC = count($thing['childs']) > 0;
@@ -861,6 +869,11 @@ class HamlTree extends HamlParser {
     $o = $this->o;
     # optional tag name defaulting to div (eg #table)
     $tag = array('type' => 'tag', 'classes' => array(), 'ind' => $ind_str);
+
+    # HAML-TO-PHP specific feature: $foo = .. assign to var)
+    if ($this->reg('\$([^\s=]+)[\s]*=',$m))
+      $tag['assign_to'] = $m[1];
+
     if ($this->reg('%([^!&\s.=#\n({]+)',$m)){
       $tag['name'] = $m[1];
     } else $tag['name'] = 'div';

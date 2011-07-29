@@ -35,6 +35,8 @@ foreach (array(
   ) as $file) {
 
   $tests = json_decode(file_get_contents($file), true);
+  if (empty($tests))
+    throw new Exception("syntax error in $file");
 
   foreach ($tests as $groupheader => $group) {
     echo "===> $groupheader\n";
