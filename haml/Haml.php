@@ -213,7 +213,11 @@ class Haml {
 		'php' => 'HamlUtilities::php',
 		'preserve' => 'HamlUtilities::preserve',
 		// ...
-	  )
+	  ),
+
+      /* HAML-TO-PHP specific: When enabled and when using XHTML tag order will be checked
+       * causing <tr><table> to fail */
+      'check_tag_order' => true
     ); // }}}2
 
 

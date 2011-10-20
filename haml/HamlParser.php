@@ -5,6 +5,114 @@
  * See Haml.php for an overv
  */
 
+class HamlMayContain {
+
+  static public function mayContain($doctype, $isxhtml, $parentTag, $childTag){
+    static $a;
+    $parentTag = strtolower($parentTag);
+    $childTag = strtolower($childTag);
+    if (is_null($a)){
+      $a = array(
+        'var' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'ul' => explode(' ','li'),
+        'tt' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'tr' => explode(' ','th td'),
+        'title' => explode(' ','pcdata'),
+        'title' => explode(' ','pcdata'),
+        'thead' => explode(' ','tr'),
+        'th' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'tfoot' => explode(' ','tr'),
+        'textarea' => explode(' ','pcdata'),
+        'textarea' => explode(' ','pcdata'),
+        'td' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'tbody' => explode(' ','tr'),
+        'table' => explode(' ','caption col colgroup thead tfoot tbody tr'),
+        'sup' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'sub' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'style' => explode(' ','pcdata'),
+        'style' => explode(' ','pcdata'),
+        'strong' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'span' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'small' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'select' => explode(' ','optgroup option'),
+        'script' => explode(' ','pcdata'),
+        'script' => explode(' ','pcdata'),
+        'samp' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'q' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'pre' => explode(' ','pcdata a tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup br span bdo map ins del script input select textarea label button'),
+        'param' => explode(' ','empty'),
+        'param' => explode(' ','empty'),
+        'p' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'option' => explode(' ','pcdata'),
+        'option' => explode(' ','pcdata'),
+        'optgroup' => explode(' ','option'),
+        'ol' => explode(' ','li'),
+        'object' => explode(' ','pcdata param p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'noscript' => explode(' ','p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form noscript ins del script'),
+        'meta' => explode(' ','empty'),
+        'meta' => explode(' ','empty'),
+        'map' => explode(' ','p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form noscript ins del script area'),
+        'link' => explode(' ','empty'),
+        'link' => explode(' ','empty'),
+        'li' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'legend' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'label' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'kbd' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'ins' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'input' => explode(' ','empty'),
+        'input' => explode(' ','empty'),
+        'img' => explode(' ','empty'),
+        'img' => explode(' ','empty'),
+        'i' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'hr' => explode(' ','empty'),
+        'hr' => explode(' ','empty'),
+        'head' => explode(' ','script style meta link object title base'),
+        'h6' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'h5' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'h4' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'h3' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'h2' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'h1' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'form' => explode(' ','p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table noscript ins del script'),
+        'fieldset' => explode(' ','pcdata legend p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'em' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'dt' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'dl' => explode(' ','dt dd'),
+        'div' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'dfn' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'del' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'dd' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button noscript ins del script'),
+        'colgroup' => explode(' ','col'),
+        'col' => explode(' ','empty'),
+        'col' => explode(' ','empty'),
+        'code' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'cite' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'caption' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'button' => explode(' ','pcdata p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address table br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup noscript ins del script'),
+        'br' => explode(' ','empty'),
+        'br' => explode(' ','empty'),
+        'body' => explode(' ','p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form noscript ins del script'),
+        'blockquote' => explode(' ','p h1 h2 h3 h4 h5 h6 div ul ol dl pre hr blockquote address fieldset table form noscript ins del script'),
+        'big' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'bdo' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'base' => explode(' ','empty'),
+        'base' => explode(' ','empty'),
+        'b' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'area' => explode(' ','empty'),
+        'area' => explode(' ','empty'),
+        'address' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'acronym' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'abbr' => explode(' ','pcdata a br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'a' => explode(' ','pcdata br span bdo map object img tt i b big small em strong dfn code q samp kbd var cite abbr acronym sub sup input select textarea label button ins del script'),
+        'html' => explode(' ','head body'),
+      );
+    }
+    if ($isxhtml && isset($a[$parentTag]) && !(in_array($childTag, $a[$parentTag])))
+      throw new HamlParseException("tag $parentTag should contain only these tags: ".implode(",", $a[$parentTag]).' but '.$childTag.' requested!');
+    }
+
+}
+
  /*
  * high level overview:
  * 1) HAML is parsed to a tree (represented as arrays). instantiating HamlTree does this
@@ -462,7 +570,7 @@ class HamlTree extends HamlParser {
     }
   }
 
-  protected function flattenThing(array $thing){
+  protected function flattenThing(array $thing, $parent_tag = ''){
     $html = substr($this->options['format'], 0, 4) == 'html';
     $q = $this->options['attr_wrapper'];
     if (isset($thing['type'])){
@@ -507,6 +615,9 @@ class HamlTree extends HamlParser {
             $this->rPHP('ob_start();', false);
 
           $tag_name = $thing['name'];
+          if ($parent_tag != '' && $this->options['check_tag_order'])
+            HamlMayContain::mayContain($this->doctype, !$this->isHtml(), $parent_tag, $tag_name);
+
           $autoclose = in_array($tag_name, $this->options['autoclose']);
           $childs = $this->d($thing,'childs',array());
           if ($autoclose && count($childs) > 0 && ($childs !== array ( array ( 'type' => 'text', 'items' => array ( array ( 'text' => "\n"))))) )
@@ -644,7 +755,7 @@ class HamlTree extends HamlParser {
           } else {
             $this->rText('>', false);
             foreach ($childs as $v) {
-              $this->flattenThing($v);
+              $this->flattenThing($v, $tag_name);
             }
 			if (!$this->options['ugly']){
 			  $this->rText("\n".$thing['ind'], false);
