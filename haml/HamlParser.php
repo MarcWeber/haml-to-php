@@ -772,7 +772,7 @@ class HamlTree extends HamlParser {
           $hasC = count($thing['childs']) > 0;
           $this->rPHP($thing['php'], $hasC);
           foreach ($thing['childs'] as $c) {
-            $this->flattenThing($c);
+            $this->flattenThing($c, $parent_tag);
           }
           if ($hasC)
             $this->rPHP('}');
