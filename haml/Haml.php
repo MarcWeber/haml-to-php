@@ -235,9 +235,9 @@ class Haml {
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, 'data='.urlencode($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-        if (defined('HAML_CAINFO')){
+        if (defined('HAML_SERVICE_CAINFO')){
           curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-          curl_setopt($ch, CURLOPT_CAINFO, HAML_CAINFO);
+          curl_setopt($ch, CURLOPT_CAINFO, HAML_SERVICE_CAINFO);
         }
         $result = curl_exec($ch);
         curl_close($ch);
