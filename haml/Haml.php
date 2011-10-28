@@ -222,7 +222,36 @@ class Haml {
 
 
     public function hamlToPHP($str, $filename, $func_name = null){
-      return HamlUtilities::hamlToPHPStr($str, $this->options, $filename, $func_name);
+      if (defined('HAML_SERVICE_URL')){
+        // code was not bought, use service
+        $ch = curl_init(HAML_SERVICE_URL);
+        $data = json_encode(
+          array(
+          'auth_code' => HAML_SERVICE_AUTH,
+          'str' =>  $str,
+          'filename' => $filename,
+          'func_name' => $func_name
+        ));
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, 'data='.urlencode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        $result = curl_exec($ch);
+        curl_close($ch);
+        if ($result[0] !== ' '){
+          throw new Exception('HAML service returned invalid JSON: '.$result);
+        }
+        $result = json_decode(substr($result,1,strlen($result)-1), true);
+        if (!is_array($result))
+          throw new Exception('HAML service returned invalid JSON!');
+        if (isset($result['error']))
+          throw new Exception('HAML service returned error :'.$result['error']);
+        if (!isset($result['result']))
+          throw new Exception('HAML service failed returnening result!');
+        return $result['result'];
+      } else {
+        // code was bought
+        return HamlUtilities::hamlToPHPStr($str, $this->options, $filename, $func_name);
+      }
     }
 
 }
