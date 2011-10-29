@@ -6,6 +6,7 @@ define('BASE',dirname(__FILE__));
 
 define('HAML_DIR',BASE.'/haml');
 define('HAML_TEMLPATE_CACHE',BASE.'/template-cache');
+mkdir(HAML_TEMLPATE_CACHE, 0777, true);
 
 // create caching haml object
 $haml = new HamlFileCache(HAML_DIR, HAML_TEMLPATE_CACHE);
@@ -31,6 +32,12 @@ $_POST = array_merge(
 // the data passed to the .haml file. extract() is being used to put keys in scope
 $g = array('title' => "You're welcome to modify this HAML sample and play with it");
 
-// run the template. Parsing, translating to PHP and writing cache file is done 
-// automatically
-echo $haml->haml('test.haml', $g);
+try {
+    // run the template. Parsing, translating to PHP and writing cache file is done 
+    // automatically
+    echo $haml->haml('main.haml', $g);
+} catch (Exception $e) {
+  echo "crap! exception: ".$e->getMessage();
+  flush();
+  throw $e;
+}
