@@ -586,6 +586,9 @@ class HamlTree extends HamlParser {
             }
           $this->rText('<![endif]-->',false);
           break;
+        case 'php-code-multiline':
+          $this->rPHP($thing['php']);
+          break;
         case 'filter':
           if (!isset($this->options['filters'][$thing['filter']]))
             $this->error('bad filter: '.var_export($thing['filter'],true)); // TODO location?
@@ -822,6 +825,7 @@ class HamlTree extends HamlParser {
               , array('pConditionalComment', $expected_ind, $ind_str) # /[IE] ..
               , array('pInlineComment', $expected_ind, $ind_str)      # /
               , array('pSilentComment', $expected_ind, $ind_str)      # -#
+              , array('pPHPCodeMultiline', $expected_ind, $ind_str)
               , array('pFilter', $expected_ind, $ind_str)             # :
               , array('pPHP', $expected_ind, $ind_str)
               , array('pTag', $expected_ind, $ind_str)
@@ -844,6 +848,18 @@ class HamlTree extends HamlParser {
         , array('pReg','(=|!=|[&]=)')
         , array('pArbitraryPHPCode',true)
         , array('pStr',"\n")
+      ));
+  }
+
+  protected function pPHPCodeMultiline($expected_ind, $ind_str){
+    return $this->p(array('pSequence'
+        , '
+        $R = array( "type" => "php-code-multiline",
+                    "php" => $R[1]
+                  );
+        '
+        , array('pStr', ':php'."\n")
+        , array('pMany1', '$R = implode("", $R);', array('pReg', $ind_str.$this->ind.'(.*\n)' ))
       ));
   }
 
@@ -982,7 +998,9 @@ class HamlTree extends HamlParser {
     $tag = array('type' => 'tag', 'classes' => array(), 'ind' => $ind_str);
 
     # HAML-TO-PHP specific feature: $foo = .. assign to var)
-    if ($this->reg('\$([^\s=]+)[\s]*=',$m))
+    #   $a=%div
+    #   $a['foo']=%div
+    if ($this->reg('\$([^\s=\[]+(\[[^\]]*\])?)[\s]*=',$m))
       $tag['assign_to'] = $m[1];
 
     if ($this->reg('%([^!&\s.=#\n({]+)',$m)){
@@ -1222,6 +1240,7 @@ class HamlTree extends HamlParser {
         <?php
         return ob_get_clean();
         }catch(Exception \$e){
+          // Missing try .. finally which can be found in many other languages
           ob_end_clean();
         }
       }

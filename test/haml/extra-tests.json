@@ -52,6 +52,13 @@
       "haml" : "$a=%div\n  foo\n  %strong content\n!=$a",
       "html" : "<div>foo<strong>content</strong></div>"
     }
+  },
+
+  "php blocks" : {
+    "php blocks" : {
+      "haml" : ":php\n  $a=7;\n  $b=8;\n=$a\n=$b",
+      "html" : "78"
+    }
   }
 
 }
