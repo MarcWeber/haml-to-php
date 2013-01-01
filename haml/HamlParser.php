@@ -8,6 +8,7 @@
 class HamlMayContain {
 
   static public function mayContain($doctype, $isxhtml, $parentTag, $childTag){
+    return ;
     static $a;
     $parentTag = strtolower($parentTag);
     $childTag = strtolower($childTag);
